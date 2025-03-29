@@ -9,7 +9,7 @@ import type { GlobalState } from '../global/types';
 import type { CallbackManager } from './callbacks';
 
 import {
-  ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, DEBUG, SAVED_FOLDER_ID, SERVICE_NOTIFICATIONS_USER_ID,
+  ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, DEBUG, INBOX_FOLDER_ID, SAVED_FOLDER_ID, SERVICE_NOTIFICATIONS_USER_ID,
 } from '../config';
 import { getIsChatMuted } from '../global/helpers/notifications';
 import {
@@ -115,8 +115,31 @@ if (DEBUG) {
 const updateFolderManagerThrottled = throttle(() => {
   onFullyIdle(() => {
     updateFolderManager(getGlobal());
+    // Also trigger a fast Inbox update after the regular update
+    checkForInboxUpdates();
   });
 }, UPDATE_THROTTLE);
+
+// Function to quickly update Inbox folder in response to new messages
+function checkForInboxUpdates() {
+  const global = getGlobal();
+  if (!global.chatFolders?.isInboxFolderEnabled) return;
+
+  const firstFolderId = global.chatFolders.orderedIds?.[0] ?? ALL_FOLDER_ID;
+  const firstFolderOrderedIds = results.orderedIdsByFolderId[firstFolderId];
+  if (!firstFolderOrderedIds) return;
+
+  const goodIds = firstFolderOrderedIds.filter((chatId) => {
+    const chatSummary = prepared.chatSummariesById.get(chatId);
+    return chatSummary && !(!chatSummary.isUnread || chatSummary.isMuted);
+  });
+
+  const currentInboxIds = results.orderedIdsByFolderId[INBOX_FOLDER_ID];
+  if (!currentInboxIds || !areSortedArraysEqual(goodIds, currentInboxIds)) {
+    results.orderedIdsByFolderId[INBOX_FOLDER_ID] = goodIds;
+    callbacks.orderedIdsByFolderId[INBOX_FOLDER_ID]?.runCallbacks(goodIds);
+  }
+}
 
 let inited = false;
 
@@ -332,6 +355,12 @@ function updateFolders(
       ALL_FOLDER_ID, newListIds, newPinnedIds,
     );
 
+    const inboxSummary = buildInboxFolderSummary(global);
+    if (inboxSummary) {
+      prepared.folderSummariesById[INBOX_FOLDER_ID] = inboxSummary;
+      changedFolders.push(INBOX_FOLDER_ID);
+    }
+
     prevGlobal.allFolderListIds = newListIds;
     prevGlobal.allFolderPinnedIds = newPinnedIds;
 
@@ -403,6 +432,22 @@ function buildFolderSummary(folder: ApiChatFolder): FolderSummary {
     excludedChatIds: folder.excludedChatIds ? new Set(folder.excludedChatIds) : undefined,
     includedChatIds: folder.excludedChatIds ? new Set(folder.includedChatIds) : undefined,
     pinnedChatIds: folder.excludedChatIds ? new Set(folder.pinnedChatIds) : undefined,
+  };
+}
+
+function buildInboxFolderSummary(global: GlobalState): FolderSummary | undefined {
+  if (!global.chatFolders.isInboxFolderEnabled) {
+    return undefined;
+  }
+
+  const allChatsFolderSummary = prepared.folderSummariesById[ALL_FOLDER_ID];
+  if (!allChatsFolderSummary || !allChatsFolderSummary.listIds) {
+    return undefined;
+  }
+
+  return {
+    id: INBOX_FOLDER_ID,
+    listIds: allChatsFolderSummary.listIds,
   };
 }
 
@@ -736,6 +781,27 @@ function buildFolderOrderedIds(folderId: number) {
   const folderSummary = prepared.folderSummariesById[folderId];
   if (!folderSummary) {
     return {};
+  }
+
+  // Special handling for the Inbox folder
+  if (folderId === INBOX_FOLDER_ID) {
+    const global = getGlobal();
+    const firstFolderId = global.chatFolders.orderedIds?.[0] ?? ALL_FOLDER_ID;
+    const firstFolderIds = results.orderedIdsByFolderId[firstFolderId];
+    if (!firstFolderIds) {
+      return {};
+    }
+
+    // Filter to only include unread chats from the first folder (not necessarily ALL_FOLDER_ID)
+    const unreadIds = firstFolderIds.filter((chatId) => {
+      const chatSummary = prepared.chatSummariesById.get(chatId);
+      return chatSummary && !(!chatSummary.isUnread || chatSummary.isMuted);
+    });
+
+    return {
+      pinnedCount: 0,
+      orderedIds: unreadIds,
+    };
   }
 
   const { orderedPinnedIds, pinnedChatIds } = folderSummary;

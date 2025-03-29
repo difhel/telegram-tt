@@ -1267,6 +1267,7 @@ export interface ActionPayloads {
     folderId: number;
     url: string;
   } & WithTabId;
+  toggleInboxFolder: { isEnabled: boolean };
 
   requestChatTranslation: {
     chatId: string;

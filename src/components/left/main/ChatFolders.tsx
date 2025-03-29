@@ -11,7 +11,7 @@ import type { LeftColumnContent, SettingsScreens } from '../../../types';
 import type { MenuItemContextAction } from '../../ui/ListItem';
 import type { TabWithProperties } from '../../ui/TabList';
 
-import { ALL_FOLDER_ID } from '../../../config';
+import { ALL_FOLDER_ID, INBOX_FOLDER_ID } from '../../../config';
 import { selectCanShareFolder, selectTabState } from '../../../global/selectors';
 import { selectCurrentLimit } from '../../../global/selectors/limits';
 import buildClassName from '../../../util/buildClassName';
@@ -45,6 +45,7 @@ type StateProps = {
   chatFoldersById: Record<number, ApiChatFolder>;
   folderInvitesById: Record<number, ApiChatlistExportedInvite[]>;
   orderedFolderIds?: number[];
+  isInboxFolderEnabled?: boolean;
   activeChatFolder: number;
   currentUserId?: string;
   shouldSkipHistoryAnimations?: boolean;
@@ -69,6 +70,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   orderedFolderIds,
   activeChatFolder,
   currentUserId,
+  isInboxFolderEnabled,
   isForumPanelOpen,
   shouldSkipHistoryAnimations,
   maxFolders,
@@ -121,20 +123,37 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     } satisfies ApiChatFolder;
   }, [orderedFolderIds, lang]);
 
+  const inboxFolder: ApiChatFolder = useMemo(() => {
+    return {
+      id: INBOX_FOLDER_ID,
+      title: { text: 'Inbox' },
+      includedChatIds: MEMO_EMPTY_ARRAY,
+      excludedChatIds: MEMO_EMPTY_ARRAY,
+    } satisfies ApiChatFolder;
+  }, []);
+
   const displayedFolders = useMemo(() => {
-    return orderedFolderIds
-      ? orderedFolderIds.map((id) => {
-        if (id === ALL_FOLDER_ID) {
-          return allChatsFolder;
-        }
+    if (!orderedFolderIds) return undefined;
 
-        return chatFoldersById[id] || {};
-      }).filter(Boolean)
-      : undefined;
-  }, [chatFoldersById, allChatsFolder, orderedFolderIds]);
+    let folders = orderedFolderIds.map((id) => {
+      if (id === ALL_FOLDER_ID) {
+        return allChatsFolder;
+      }
+      return chatFoldersById[id] || {};
+    });
 
-  const allChatsFolderIndex = displayedFolders?.findIndex((folder) => folder.id === ALL_FOLDER_ID);
-  const isInAllChatsFolder = allChatsFolderIndex === activeChatFolder;
+    // Insert the inbox folder as the second folder if enabled
+    if (isInboxFolderEnabled) {
+      folders = [
+        ...folders.slice(0, 1),
+        inboxFolder,
+        ...folders.slice(1),
+      ];
+    }
+
+    return folders.filter(Boolean);
+  }, [orderedFolderIds, isInboxFolderEnabled, chatFoldersById, allChatsFolder, inboxFolder]);
+
   const isInFirstFolder = FIRST_FOLDER_INDEX === activeChatFolder;
 
   const folderCountersById = useFolderManagerForUnreadCounters();
@@ -302,9 +321,29 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   });
 
   function renderCurrentTab(isActive: boolean) {
-    const activeFolder = Object.values(chatFoldersById)
-      .find(({ id }) => id === folderTabs![activeChatFolder].id);
-    const isFolder = activeFolder && !isInAllChatsFolder;
+    const activeFolder = displayedFolders?.[activeChatFolder];
+
+    if (!activeFolder) {
+      return undefined;
+    }
+
+    if (activeFolder.id === INBOX_FOLDER_ID) {
+      return (
+        <ChatList
+          folderType="inbox"
+          isActive={isActive}
+          isForumPanelOpen={isForumPanelOpen}
+          foldersDispatch={foldersDispatch}
+          onSettingsScreenSelect={onSettingsScreenSelect}
+          onLeftColumnContentChange={onLeftColumnContentChange}
+          canDisplayArchive={false}
+          archiveSettings={archiveSettings}
+          sessions={sessions}
+        />
+      );
+    }
+
+    const isFolder = activeFolder.id !== ALL_FOLDER_ID;
 
     return (
       <ChatList
@@ -363,6 +402,7 @@ export default memo(withGlobal<OwnProps>(
         byId: chatFoldersById,
         orderedIds: orderedFolderIds,
         invites: folderInvitesById,
+        isInboxFolderEnabled,
       },
       chats: {
         listIds: {
@@ -388,6 +428,7 @@ export default memo(withGlobal<OwnProps>(
       folderInvitesById,
       orderedFolderIds,
       activeChatFolder,
+      isInboxFolderEnabled,
       currentUserId,
       shouldSkipHistoryAnimations,
       hasArchivedChats: Boolean(archived?.length),

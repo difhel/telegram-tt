@@ -24,6 +24,7 @@ import usePreviousDeprecated from '../../../../hooks/usePreviousDeprecated';
 import AnimatedIconWithPreview from '../../../common/AnimatedIconWithPreview';
 import Icon from '../../../common/icons/Icon';
 import Button from '../../../ui/Button';
+import Checkbox from '../../../ui/Checkbox';
 import Draggable from '../../../ui/Draggable';
 import ListItem from '../../../ui/ListItem';
 import Loading from '../../../ui/Loading';
@@ -41,6 +42,7 @@ type StateProps = {
   recommendedChatFolders?: ApiChatFolder[];
   maxFolders: number;
   isPremium?: boolean;
+  isInboxFolderEnabled?: boolean;
 };
 
 type SortState = {
@@ -61,6 +63,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
   foldersById,
   isPremium,
   recommendedChatFolders,
+  isInboxFolderEnabled,
   maxFolders,
 }) => {
   const {
@@ -69,6 +72,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
     openLimitReachedModal,
     openDeleteChatFolderModal,
     sortChatFolders,
+    toggleInboxFolder,
   } = getActions();
 
   const [state, setState] = useState<SortState>({
@@ -225,6 +229,18 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
         )}
       </div>
 
+      <div className="settings-item">
+        <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>Special Folders</h4>
+
+        <Checkbox
+          label="Enable Inbox Folder (which contains all chats from the first folder except read chats)"
+          checked={isInboxFolderEnabled}
+          // TODO rewrite to support `useCallback`
+          // eslint-disable-next-line react/jsx-no-bind
+          onCheck={(isChecked) => toggleInboxFolder({ isEnabled: isChecked })}
+        />
+      </div>
+
       <div className="settings-item pt-3">
         <h4 className="settings-item-header mb-3" dir={lang.isRtl ? 'rtl' : undefined}>{lang('Filters')}</h4>
 
@@ -375,6 +391,7 @@ export default memo(withGlobal<OwnProps>(
     const {
       orderedIds: folderIds,
       byId: foldersById,
+      isInboxFolderEnabled,
       recommended: recommendedChatFolders,
     } = global.chatFolders;
 
@@ -383,6 +400,7 @@ export default memo(withGlobal<OwnProps>(
       foldersById,
       isPremium: selectIsCurrentUserPremium(global),
       recommendedChatFolders,
+      isInboxFolderEnabled,
       maxFolders: selectCurrentLimit(global, 'dialogFilters'),
     };
   },

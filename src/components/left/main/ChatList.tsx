@@ -17,6 +17,7 @@ import {
   CHAT_HEIGHT_PX,
   CHAT_LIST_SLICE,
   FRESH_AUTH_PERIOD,
+  INBOX_FOLDER_ID,
   SAVED_FOLDER_ID,
 } from '../../../config';
 import buildClassName from '../../../util/buildClassName';
@@ -43,7 +44,7 @@ import UnconfirmedSession from './UnconfirmedSession';
 
 type OwnProps = {
   className?: string;
-  folderType: 'all' | 'archived' | 'saved' | 'folder';
+  folderType: 'all' | 'archived' | 'saved' | 'folder' | 'inbox';
   folderId?: number;
   isActive: boolean;
   canDisplayArchive?: boolean;
@@ -86,8 +87,17 @@ const ChatList: FC<OwnProps> = ({
   const isArchived = folderType === 'archived';
   const isAllFolder = folderType === 'all';
   const isSaved = folderType === 'saved';
+  const isInbox = folderType === 'inbox';
   const resolvedFolderId = (
-    isAllFolder ? ALL_FOLDER_ID : isArchived ? ARCHIVED_FOLDER_ID : isSaved ? SAVED_FOLDER_ID : folderId!
+    isAllFolder
+      ? ALL_FOLDER_ID
+      : isArchived
+        ? ARCHIVED_FOLDER_ID
+        : isSaved
+          ? SAVED_FOLDER_ID
+          : isInbox
+            ? INBOX_FOLDER_ID
+            : folderId!
   );
 
   const shouldDisplayArchive = isAllFolder && canDisplayArchive && archiveSettings;

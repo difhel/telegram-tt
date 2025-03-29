@@ -212,3 +212,13 @@ addActionHandler('closeChatInviteModal', (global, actions, payload): ActionRetur
     chatInviteModal: undefined,
   }, tabId);
 });
+
+addActionHandler('toggleInboxFolder', (global, actions, { isEnabled }): ActionReturnType => {
+  return {
+    ...global,
+    chatFolders: {
+      ...global.chatFolders,
+      isInboxFolderEnabled: isEnabled || undefined,
+    },
+  };
+});
