@@ -188,7 +188,7 @@ export default function createConfig(
         appTitle: APP_TITLE,
         appleIcon: APP_ENV === 'production' ? 'apple-touch-icon' : 'apple-touch-icon-dev',
         mainIcon: APP_ENV === 'production' ? 'icon-192x192' : 'icon-dev-192x192',
-        manifest: APP_ENV === 'production' ? 'site.webmanifest' : 'site_dev.webmanifest',
+        manifest: 'site.webmanifest',
         baseUrl: BASE_URL,
         csp: CSP,
         template: 'src/index.html',
