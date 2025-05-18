@@ -1,9 +1,8 @@
 {
-    "name": "Telegram Web",
-    "short_name": "Telegram Web",
-    "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
+    "name": "Telegram D",
+    "short_name": "Telegram D",
+    "description": "Telegram D is a fork of Telegram Web A with bugs and bananas.",
     "start_url": "./",
-    "gcm_sender_id": "122867383838",
     "icons": [
         {
             "src": "icon-192x192.png",
@@ -21,11 +20,6 @@
             "type": "image/png"
         }
     ],
-    "screenshots" : [{
-      "src": "screenshot.jpg",
-      "sizes": "1280x802",
-      "type": "image/jpeg"
-    }],
     "share_target": {
       "action": "./share/",
       "method": "POST",
