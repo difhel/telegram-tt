@@ -49,13 +49,14 @@
     display: flex;
     align-items: center;
     white-space: nowrap;
+    height: 1.5rem; // Emoji-only titles ignore line-height on Windows
     gap: 1px; // Prevent custom emoji sticking to the text
   }
 
   .badge {
     min-width: 1.25rem;
     height: 1.25rem;
-    margin-inline-start: 0.5rem;
+    margin-inline-start: 0.3125rem;
     background: var(--color-gray);
     border-radius: 0.75rem;
     padding: 0 0.3125rem;

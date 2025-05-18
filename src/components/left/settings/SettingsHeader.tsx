@@ -21,25 +21,24 @@ type OwnProps = {
   currentScreen: SettingsScreens;
   editedFolderId?: number;
   onReset: () => void;
-  onScreenSelect: (screen: SettingsScreens) => void;
 };
 
 const SettingsHeader: FC<OwnProps> = ({
   currentScreen,
   editedFolderId,
   onReset,
-  onScreenSelect,
 }) => {
   const {
     signOut,
     openDeleteChatFolderModal,
+    openSettingsScreen,
   } = getActions();
 
   const { isMobile } = useAppLayout();
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
 
   const handleMultiClick = useMultiClick(5, () => {
-    onScreenSelect(SettingsScreens.Experimental);
+    openSettingsScreen({ screen: SettingsScreens.Experimental });
   });
 
   const openSignOutConfirmation = useCallback(() => {
@@ -163,6 +162,9 @@ const SettingsHeader: FC<OwnProps> = ({
       case SettingsScreens.PrivacyPhoneP2PDeniedContacts:
         return <h3>{oldLang('NeverAllow')}</h3>;
 
+      case SettingsScreens.PrivacyNoPaidMessages:
+        return <h3>{lang('RemoveFeeTitle')}</h3>;
+
       case SettingsScreens.Performance:
         return <h3>{lang('MenuAnimations')}</h3>;
 
@@ -267,7 +269,7 @@ const SettingsHeader: FC<OwnProps> = ({
               size="smaller"
               color="translucent"
               // eslint-disable-next-line react/jsx-no-bind
-              onClick={() => onScreenSelect(SettingsScreens.EditProfile)}
+              onClick={() => openSettingsScreen({ screen: SettingsScreens.EditProfile })}
               ariaLabel={oldLang('lng_settings_information')}
             >
               <Icon name="edit" />

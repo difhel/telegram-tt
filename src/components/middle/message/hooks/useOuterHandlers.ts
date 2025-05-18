@@ -6,9 +6,9 @@ import { getActions } from '../../../../global';
 import type { Signal } from '../../../../util/signals';
 
 import { requestMeasure } from '../../../../lib/fasterdom/fasterdom';
+import { IS_ANDROID, IS_TOUCH_ENV } from '../../../../util/browser/windowEnvironment';
 import { captureEvents, SwipeDirection } from '../../../../util/captureEvents';
 import stopEvent from '../../../../util/stopEvent';
-import { IS_ANDROID, IS_TOUCH_ENV } from '../../../../util/windowEnvironment';
 import windowSize from '../../../../util/windowSize';
 import { REM } from '../../../common/helpers/mediaDimensions';
 import { preventMessageInputBlur } from '../../helpers/preventMessageInputBlur';
@@ -138,7 +138,9 @@ export default function useOuterHandlers(
   function handleContainerDoubleClick() {
     if (IS_TOUCH_ENV || !canReply) return;
 
-    updateDraftReplyInfo({ replyToMsgId: messageId, replyToPeerId: undefined, quoteText: undefined });
+    updateDraftReplyInfo({
+      replyToMsgId: messageId, replyToPeerId: undefined, quoteText: undefined, quoteOffset: undefined,
+    });
   }
 
   function stopPropagation(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {

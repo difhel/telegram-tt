@@ -7,7 +7,6 @@ import { getActions } from '../../../global';
 import type { ApiSession } from '../../../api/types';
 import type { GlobalState } from '../../../global/types';
 import type { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
-import type { SettingsScreens } from '../../../types';
 import { LeftColumnContent } from '../../../types';
 
 import {
@@ -20,10 +19,10 @@ import {
   INBOX_FOLDER_ID,
   SAVED_FOLDER_ID,
 } from '../../../config';
+import { IS_APP, IS_MAC_OS } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { getOrderKey, getPinnedChatsCount } from '../../../util/folderManager';
 import { getServerTime } from '../../../util/serverTime';
-import { IS_APP, IS_MAC_OS } from '../../../util/windowEnvironment';
 
 import usePeerStoriesPolling from '../../../hooks/polling/usePeerStoriesPolling';
 import useTopOverscroll from '../../../hooks/scroll/useTopOverscroll';
@@ -40,6 +39,7 @@ import Loading from '../../ui/Loading';
 import Archive from './Archive';
 import Chat from './Chat';
 import EmptyFolder from './EmptyFolder';
+import FrozenAccountNotification from './FrozenAccountNotification';
 import UnconfirmedSession from './UnconfirmedSession';
 
 type OwnProps = {
@@ -51,9 +51,9 @@ type OwnProps = {
   archiveSettings?: GlobalState['archiveSettings'];
   isForumPanelOpen?: boolean;
   sessions?: Record<string, ApiSession>;
+  isAccountFrozen?: boolean;
+  isMainList?: boolean;
   foldersDispatch?: FolderEditDispatch;
-  onSettingsScreenSelect?: (screen: SettingsScreens) => void;
-  onLeftColumnContentChange?: (content: LeftColumnContent) => void;
 };
 
 const INTERSECTION_THROTTLE = 200;
@@ -69,15 +69,17 @@ const ChatList: FC<OwnProps> = ({
   canDisplayArchive,
   archiveSettings,
   sessions,
+  isAccountFrozen,
+  isMainList,
   foldersDispatch,
-  onSettingsScreenSelect,
-  onLeftColumnContentChange,
 }) => {
   const {
     openChat,
     openNextChat,
     closeForumPanel,
     toggleStoryRibbon,
+    openFrozenAccountModal,
+    openLeftColumnContent,
   } = getActions();
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -101,6 +103,7 @@ const ChatList: FC<OwnProps> = ({
   );
 
   const shouldDisplayArchive = isAllFolder && canDisplayArchive && archiveSettings;
+  const shouldShowFrozenAccountNotification = isAccountFrozen && isAllFolder;
 
   const orderedIds = useFolderManagerForOrderedIds(resolvedFolderId);
   usePeerStoriesPolling(orderedIds);
@@ -108,6 +111,7 @@ const ChatList: FC<OwnProps> = ({
   const chatsHeight = (orderedIds?.length || 0) * CHAT_HEIGHT_PX;
   const archiveHeight = shouldDisplayArchive
     ? archiveSettings?.isMinimized ? ARCHIVE_MINIMIZED_HEIGHT : CHAT_HEIGHT_PX : 0;
+  const frozenNotificationHeight = shouldShowFrozenAccountNotification ? 68 : 0;
 
   const { orderDiffById, getAnimationType } = useOrderDiff(orderedIds);
 
@@ -118,8 +122,8 @@ const ChatList: FC<OwnProps> = ({
     const current = sessionsArray.find((session) => session.isCurrent);
     if (!current || getServerTime() - current.dateCreated < FRESH_AUTH_PERIOD) return false;
 
-    return isAllFolder && sessionsArray.some((session) => session.isUnconfirmed);
-  }, [isAllFolder, sessions]);
+    return !isAccountFrozen && isAllFolder && sessionsArray.some((session) => session.isUnconfirmed);
+  }, [isAllFolder, sessions, isAccountFrozen]);
 
   useEffect(() => {
     if (!shouldShowUnconfirmedSessions) setUnconfirmedSessionHeight(0);
@@ -154,7 +158,7 @@ const ChatList: FC<OwnProps> = ({
         const position = Number(digit) + shift - 1;
 
         if (isArchiveInList && position === -1) {
-          onLeftColumnContentChange?.(LeftColumnContent.Archived);
+          if (isMainList) openLeftColumnContent({ contentKey: LeftColumnContent.Archived });
           return;
         }
 
@@ -170,8 +174,7 @@ const ChatList: FC<OwnProps> = ({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [
-    archiveSettings, isSaved, isActive, onLeftColumnContentChange, openChat, openNextChat, orderedIds,
-    shouldDisplayArchive,
+    archiveSettings, isSaved, isActive, openChat, openNextChat, orderedIds, shouldDisplayArchive, isMainList,
   ]);
 
   const { observe } = useIntersectionObserver({
@@ -180,8 +183,12 @@ const ChatList: FC<OwnProps> = ({
   });
 
   const handleArchivedClick = useLastCallback(() => {
-    onLeftColumnContentChange!(LeftColumnContent.Archived);
+    openLeftColumnContent({ contentKey: LeftColumnContent.Archived });
     closeForumPanel();
+  });
+
+  const handleFrozenAccountNotificationClick = useLastCallback(() => {
+    openFrozenAccountModal();
   });
 
   const handleArchivedDragEnter = useLastCallback(() => {
@@ -225,7 +232,8 @@ const ChatList: FC<OwnProps> = ({
 
     return viewportIds!.map((id, i) => {
       const isPinned = viewportOffset + i < pinnedCount;
-      const offsetTop = unconfirmedSessionHeight + archiveHeight + (viewportOffset + i) * CHAT_HEIGHT_PX;
+      const offsetTop = unconfirmedSessionHeight + archiveHeight + frozenNotificationHeight
+      + (viewportOffset + i) * CHAT_HEIGHT_PX;
 
       return (
         <Chat
@@ -254,7 +262,7 @@ const ChatList: FC<OwnProps> = ({
       preloadBackwards={CHAT_LIST_SLICE}
       withAbsolutePositioning
       beforeChildren={renderedOverflowTrigger}
-      maxHeight={chatsHeight + archiveHeight + unconfirmedSessionHeight}
+      maxHeight={chatsHeight + archiveHeight + frozenNotificationHeight + unconfirmedSessionHeight}
       onLoadMore={getMore}
       onDragLeave={handleDragLeave}
     >
@@ -263,6 +271,12 @@ const ChatList: FC<OwnProps> = ({
           key="unconfirmed"
           sessions={sessions!}
           onHeightChange={setUnconfirmedSessionHeight}
+        />
+      )}
+      {shouldShowFrozenAccountNotification && (
+        <FrozenAccountNotification
+          key="frozen"
+          onClick={handleFrozenAccountNotificationClick}
         />
       )}
       {shouldDisplayArchive && (
@@ -281,7 +295,6 @@ const ChatList: FC<OwnProps> = ({
             folderId={folderId}
             folderType={folderType}
             foldersDispatch={foldersDispatch!}
-            onSettingsScreenSelect={onSettingsScreenSelect!}
           />
         )
       ) : (

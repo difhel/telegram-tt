@@ -6,7 +6,10 @@ import { addExtraClass, removeExtraClass } from '../../lib/teact/teact-dom';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
 import type {
-  ApiChatFullInfo, ApiMessage, ApiRestrictionReason, ApiTopic,
+  ApiChatFullInfo,
+  ApiMessage,
+  ApiRestrictionReason,
+  ApiTopic,
 } from '../../api/types';
 import type { OnIntersectPinnedMessage } from './hooks/usePinnedMessage';
 import { MAIN_THREAD_ID } from '../../api/types';
@@ -40,6 +43,7 @@ import {
   selectFocusedMessageId,
   selectIsChatProtected,
   selectIsChatWithSelf,
+  selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
   selectIsInSelectMode,
   selectIsViewportNewest,
@@ -74,10 +78,10 @@ import useStickyDates from './hooks/useStickyDates';
 
 import Loading from '../ui/Loading';
 import ContactGreeting from './ContactGreeting';
-import MessageListBotInfo from './MessageListBotInfo';
+import MessageListAccountInfo from './MessageListAccountInfo';
 import MessageListContent from './MessageListContent';
 import NoMessages from './NoMessages';
-import PremiumRequiredMessage from './PremiumRequiredMessage';
+import RequirementToContactMessage from './RequirementToContactMessage';
 
 import './MessageList.scss';
 
@@ -94,6 +98,7 @@ type OwnProps = {
   withDefaultBg: boolean;
   onIntersectPinnedMessage: OnIntersectPinnedMessage;
   isContactRequirePremium?: boolean;
+  paidMessagesStars?: number;
 };
 
 type StateProps = {
@@ -106,6 +111,9 @@ type StateProps = {
   isCreator?: boolean;
   isChannelWithAvatars?: boolean;
   isBot?: boolean;
+  isNonContact?: boolean;
+  nameChangeDate?: number;
+  photoChangeDate?: number;
   isSynced?: boolean;
   messageIds?: number[];
   messagesById?: Record<number, ApiMessage>;
@@ -123,9 +131,12 @@ type StateProps = {
   isEmptyThread?: boolean;
   isForum?: boolean;
   currentUserId: string;
+  isAccountFrozen?: boolean;
   areAdsEnabled?: boolean;
   channelJoinInfo?: ApiChatFullInfo['joinInfo'];
   isChatProtected?: boolean;
+  hasCustomGreeting?: boolean;
+  isAppConfigLoaded?: boolean;
 };
 
 const MESSAGE_REACTIONS_POLLING_INTERVAL = 20 * 1000;
@@ -159,6 +170,9 @@ const MessageList: FC<OwnProps & StateProps> = ({
   isAnonymousForwards,
   isCreator,
   isBot,
+  isNonContact,
+  nameChangeDate,
+  photoChangeDate,
   messageIds,
   messagesById,
   firstUnreadId,
@@ -178,12 +192,16 @@ const MessageList: FC<OwnProps & StateProps> = ({
   isServiceNotificationsChat,
   currentUserId,
   isContactRequirePremium,
+  paidMessagesStars,
   areAdsEnabled,
   channelJoinInfo,
   isChatProtected,
   onIntersectPinnedMessage,
   onScrollDownToggle,
   onNotchToggle,
+  isAccountFrozen,
+  hasCustomGreeting,
+  isAppConfigLoaded,
 }) => {
   const {
     loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
@@ -215,6 +233,10 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
   const areMessagesLoaded = Boolean(messageIds);
 
+  const isPrivate = isUserId(chatId);
+  const withUsers = Boolean((!isPrivate && !isChannelChat)
+    || isChatWithSelf || isSystemBotChat || isAnonymousForwards || isChannelWithAvatars);
+
   useSyncEffect(() => {
     // We only need it first time when message list appears
     if (areMessagesLoaded) {
@@ -231,10 +253,10 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     const canHaveAds = isChannelChat || isBot;
-    if (areAdsEnabled && canHaveAds && isSynced && isReady) {
+    if (areAdsEnabled && canHaveAds && isSynced && isReady && isAppConfigLoaded) {
       loadSponsoredMessages({ peerId: chatId });
     }
-  }, [chatId, isSynced, isReady, isChannelChat, isBot, areAdsEnabled]);
+  }, [chatId, isSynced, isReady, isChannelChat, isBot, areAdsEnabled, isAppConfigLoaded]);
 
   // Updated only once when messages are loaded (as we want the unread divider to keep its position)
   useSyncEffect(() => {
@@ -318,12 +340,16 @@ const MessageList: FC<OwnProps & StateProps> = ({
         memoUnreadDividerBeforeIdRef.current,
         !isForum ? Number(threadId) : undefined,
         isChatWithSelf,
+        withUsers,
       )
       : undefined;
-  }, [messageIds, messagesById, type, isServiceNotificationsChat, isForum, threadId, isChatWithSelf, channelJoinInfo]);
+  }, [withUsers,
+    messageIds, messagesById, type,
+    isServiceNotificationsChat, isForum,
+    threadId, isChatWithSelf, channelJoinInfo]);
 
   useInterval(() => {
-    if (!messageIds || !messagesById || type === 'scheduled') return;
+    if (!messageIds || !messagesById || type === 'scheduled' || isAccountFrozen) return;
     if (!isChannelChat && !isGroupChat) return;
 
     const ids = messageIds.filter((id) => {
@@ -624,9 +650,6 @@ const MessageList: FC<OwnProps & StateProps> = ({
     }
   }, [isSelectModeActive]);
 
-  const isPrivate = isUserId(chatId);
-  const withUsers = Boolean((!isPrivate && !isChannelChat)
-    || isChatWithSelf || isSystemBotChat || isAnonymousForwards || isChannelWithAvatars);
   const noAvatars = Boolean(!withUsers || (isChannelChat && !isChannelWithAvatars));
   const shouldRenderGreeting = isUserId(chatId) && !isChatWithSelf && !isBot && !isAnonymousForwards
     && type === 'thread'
@@ -680,10 +703,12 @@ const MessageList: FC<OwnProps & StateProps> = ({
             {restrictionReason ? restrictionReason.text : `This is a private ${isChannelChat ? 'channel' : 'chat'}`}
           </span>
         </div>
+      ) : paidMessagesStars && isPrivate && !hasMessages && !hasCustomGreeting ? (
+        <RequirementToContactMessage paidMessagesStars={paidMessagesStars} userId={chatId} />
       ) : isContactRequirePremium && !hasMessages ? (
-        <PremiumRequiredMessage userId={chatId} />
-      ) : isBot && !hasMessages ? (
-        <MessageListBotInfo chatId={chatId} />
+        <RequirementToContactMessage userId={chatId} />
+      ) : (isBot || isNonContact) && !hasMessages ? (
+        <MessageListAccountInfo chatId={chatId} />
       ) : shouldRenderGreeting ? (
         <ContactGreeting key={chatId} userId={chatId} />
       ) : messageIds && (!messageGroups || isGroupChatJustCreated || isEmptyTopic) ? (
@@ -718,11 +743,14 @@ const MessageList: FC<OwnProps & StateProps> = ({
           isReady={isReady}
           hasLinkedChat={hasLinkedChat}
           isSchedule={messageGroups ? type === 'scheduled' : false}
-          shouldRenderBotInfo={isBot}
+          shouldRenderAccountInfo={isBot || isNonContact}
+          nameChangeDate={nameChangeDate}
+          photoChangeDate={photoChangeDate}
           noAppearanceAnimation={!messageGroups || !shouldAnimateAppearanceRef.current}
           onScrollDownToggle={onScrollDownToggle}
           onNotchToggle={onNotchToggle}
           onIntersectPinnedMessage={onIntersectPinnedMessage}
+          canPost={canPost}
         />
       ) : (
         <Loading color="white" backgroundColor="dark" />
@@ -735,6 +763,7 @@ export default memo(withGlobal<OwnProps>(
   (global, { chatId, threadId, type }): StateProps => {
     const currentUserId = global.currentUserId!;
     const chat = selectChat(global, chatId);
+    const userFullInfo = selectUserFullInfo(global, chatId);
     if (!chat) {
       return { currentUserId };
     }
@@ -763,6 +792,9 @@ export default memo(withGlobal<OwnProps>(
     );
 
     const chatBot = selectBot(global, chatId);
+    const isNonContact = Boolean(userFullInfo?.settings?.canAddContact);
+    const nameChangeDate = userFullInfo?.settings?.nameChangeDate;
+    const photoChangeDate = userFullInfo?.settings?.photoChangeDate;
 
     const topic = selectTopic(global, chatId, threadId);
     const chatFullInfo = !isUserId(chatId) ? selectChatFullInfo(global, chatId) : undefined;
@@ -770,6 +802,10 @@ export default memo(withGlobal<OwnProps>(
 
     const isCurrentUserPremium = selectIsCurrentUserPremium(global);
     const areAdsEnabled = !isCurrentUserPremium || selectUserFullInfo(global, currentUserId)?.areAdsEnabled;
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
+
+    const hasCustomGreeting = Boolean(userFullInfo?.businessIntro);
+    const isAppConfigLoaded = global.isAppConfigLoaded;
 
     return {
       areAdsEnabled,
@@ -784,6 +820,9 @@ export default memo(withGlobal<OwnProps>(
       isSystemBotChat: isSystemBot(chatId),
       isAnonymousForwards: isAnonymousForwardsChat(chatId),
       isBot: Boolean(chatBot),
+      isNonContact,
+      nameChangeDate,
+      photoChangeDate,
       isSynced: global.isSynced,
       messageIds,
       messagesById,
@@ -801,6 +840,9 @@ export default memo(withGlobal<OwnProps>(
       currentUserId,
       isChatProtected: selectIsChatProtected(global, chatId),
       ...(withLastMessageWhenPreloading && { lastMessage }),
+      isAccountFrozen,
+      hasCustomGreeting,
+      isAppConfigLoaded,
     };
   },
 )(MessageList));

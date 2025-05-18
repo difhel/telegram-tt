@@ -16,6 +16,8 @@ export interface ApiStarGiftRegular {
   lastSaleDate?: number;
   isBirthday?: true;
   upgradeStars?: number;
+  resellMinStars?: number;
+  title?: string;
 }
 
 export interface ApiStarGiftUnique {
@@ -31,6 +33,7 @@ export interface ApiStarGiftUnique {
   attributes: ApiStarGiftAttribute[];
   slug: string;
   giftAddress?: string;
+  resellPriceInStars?: number;
 }
 
 export type ApiStarGift = ApiStarGiftRegular | ApiStarGiftUnique;
@@ -85,6 +88,8 @@ export interface ApiSavedStarGift {
   alreadyPaidUpgradeStars?: number;
   transferStars?: number;
   canExportAt?: number;
+  canTransferAt?: number;
+  canResellAt?: number;
   isPinned?: boolean;
   isConverted?: boolean; // Local field, used for Action Message
   upgradeMsgId?: number; // Local field, used for Action Message
@@ -180,6 +185,8 @@ export interface ApiStarsTransaction {
   subscriptionPeriod?: number;
   starRefCommision?: number;
   isGiftUpgrade?: true;
+  isGiftResale?: true;
+  paidMessages?: number;
 }
 
 export interface ApiStarsSubscription {
@@ -213,4 +220,11 @@ export interface ApiStarsGiveawayWinnerOption {
   isDefault?: true;
   users: number;
   perUserStars: number;
+}
+
+export interface ApiDisallowedGiftsSettings {
+  shouldDisallowUnlimitedStarGifts?: true;
+  shouldDisallowLimitedStarGifts?: true;
+  shouldDisallowUniqueStarGifts?: true;
+  shouldDisallowPremiumGifts?: true;
 }

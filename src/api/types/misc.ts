@@ -23,6 +23,7 @@ export interface ApiInitialArgs {
   shouldDebugExportedSenders?: boolean;
   langCode: string;
   isTestServerRequested?: boolean;
+  accountIds?: string[];
 }
 
 export interface ApiOnProgress {
@@ -102,13 +103,14 @@ export interface ApiWebSession {
 
 export interface ApiSessionData {
   mainDcId: number;
-  keys: Record<number, string | number[]>;
+  keys: Record<number, string>;
   isTest?: true;
 }
 
 export type ApiNotification = {
   localId: string;
   containerSelector?: string;
+  type?: 'paidMessage' | undefined;
   title?: string | RegularLangFnParameters;
   message: TeactNode | RegularLangFnParameters;
   cacheBreaker?: string;
@@ -120,6 +122,7 @@ export type ApiNotification = {
   shouldShowTimer?: boolean;
   icon?: IconName;
   customEmojiIconId?: string;
+  shouldUseCustomIcon?: boolean;
   dismissAction?: CallbackAction;
 };
 
@@ -224,6 +227,10 @@ export interface ApiAppConfig {
   maxPinnedStoriesCount?: number;
   groupTranscribeLevelMin?: number;
   canLimitNewMessagesWithoutPremium?: boolean;
+  starsPaidMessagesAvailable?: boolean;
+  starsPaidMessageCommissionPermille?: number;
+  starsPaidMessageAmountMax?: number;
+  starsUsdWithdrawRateX1000?: number;
   bandwidthPremiumNotifyPeriod?: number;
   bandwidthPremiumUploadSpeedup?: number;
   bandwidthPremiumDownloadSpeedup?: number;
@@ -236,6 +243,12 @@ export interface ApiAppConfig {
   starRefStartPrefixes?: string[];
   tonExplorerUrl?: string;
   savedGiftPinLimit?: number;
+  freezeSinceDate?: number;
+  freezeUntilDate?: number;
+  freezeAppealUrl?: string;
+  starsStargiftResaleAmountMin?: number;
+  starsStargiftResaleAmountMax?: number;
+  starsStargiftResaleCommissionPermille?: number;
 }
 
 export interface ApiConfig {
@@ -337,10 +350,11 @@ export type ApiLimitType =
   | 'chatlistInvites'
   | 'chatlistJoined'
   | 'recommendedChannels'
-  | 'savedDialogsPinned';
+  | 'savedDialogsPinned'
+  | 'moreAccounts';
 
 export type ApiLimitTypeWithModal = Exclude<ApiLimitType, (
-  'captionLength' | 'aboutLength' | 'stickersFaved' | 'savedGifs' | 'recommendedChannels'
+  'captionLength' | 'aboutLength' | 'stickersFaved' | 'savedGifs' | 'recommendedChannels' | 'moreAccounts'
 )>;
 
 export type ApiLimitTypeForPromo = Exclude<ApiLimitType,

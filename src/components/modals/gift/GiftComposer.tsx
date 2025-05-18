@@ -1,16 +1,19 @@
 import type { ChangeEvent } from 'react';
 import React, {
-  memo, useMemo, useState,
+  memo, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ThemeKey } from '../../../types';
 import type { GiftOption } from './GiftModal';
-import { type ApiMessage, type ApiPeer, MAIN_THREAD_ID } from '../../../api/types';
+import {
+  type ApiMessage, type ApiPeer, type ApiStarsAmount, MAIN_THREAD_ID,
+} from '../../../api/types';
 
-import { getPeerTitle } from '../../../global/helpers';
-import { isApiPeerUser } from '../../../global/helpers/peers';
-import { selectPeer, selectTabState, selectTheme } from '../../../global/selectors';
+import { getPeerTitle, isApiPeerUser } from '../../../global/helpers/peers';
+import {
+  selectPeer, selectPeerPaidMessagesStars, selectTabState, selectTheme, selectThemeValues, selectUserFullInfo,
+} from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle';
 import { formatCurrency } from '../../../util/formatCurrency';
@@ -32,6 +35,7 @@ import styles from './GiftComposer.module.scss';
 
 export type OwnProps = {
   gift: GiftOption;
+  giftByStars?: GiftOption;
   peerId: string;
 };
 
@@ -45,12 +49,17 @@ export type StateProps = {
   peer?: ApiPeer;
   currentUserId?: string;
   isPaymentFormLoading?: boolean;
+  starBalance?: ApiStarsAmount;
+  paidMessagesStars?: number;
+  areUniqueStarGiftsDisallowed?: boolean;
+  shouldDisallowLimitedStarGifts?: boolean;
 };
 
 const LIMIT_DISPLAY_THRESHOLD = 50;
 
 function GiftComposer({
   gift,
+  giftByStars,
   peerId,
   peer,
   captionLimit,
@@ -61,23 +70,38 @@ function GiftComposer({
   customBackground,
   currentUserId,
   isPaymentFormLoading,
+  starBalance,
+  paidMessagesStars,
+  areUniqueStarGiftsDisallowed,
+  shouldDisallowLimitedStarGifts,
 }: OwnProps & StateProps) {
-  const { sendStarGift, openInvoice, openGiftUpgradeModal } = getActions();
+  const {
+    sendStarGift, sendPremiumGiftByStars, openInvoice, openGiftUpgradeModal, openStarsBalanceModal,
+  } = getActions();
 
   const lang = useLang();
 
   const [giftMessage, setGiftMessage] = useState<string>('');
   const [shouldHideName, setShouldHideName] = useState<boolean>(false);
   const [shouldPayForUpgrade, setShouldPayForUpgrade] = useState<boolean>(false);
+  const [shouldPayByStars, setShouldPayByStars] = useState<boolean>(false);
 
   const customBackgroundValue = useCustomBackground(theme, customBackground);
 
+  useEffect(() => {
+    if (shouldDisallowLimitedStarGifts) {
+      setShouldPayForUpgrade(true);
+    }
+  }, [shouldDisallowLimitedStarGifts, shouldPayForUpgrade]);
+
   const isStarGift = 'id' in gift;
+  const hasPremiumByStars = giftByStars && 'amount' in giftByStars;
   const isPeerUser = peer && isApiPeerUser(peer);
   const isSelf = peerId === currentUserId;
 
   const localMessage = useMemo(() => {
     if (!isStarGift) {
+      const currentGift = shouldPayByStars && hasPremiumByStars ? giftByStars : gift;
       return {
         id: -1,
         chatId: '0',
@@ -88,8 +112,8 @@ function GiftComposer({
           action: {
             mediaType: 'action',
             type: 'giftPremium',
-            currency: gift.currency,
-            amount: gift.amount,
+            amount: currentGift.amount,
+            currency: currentGift.currency,
             months: gift.months,
             message: giftMessage ? { text: giftMessage } : undefined,
           },
@@ -120,7 +144,9 @@ function GiftComposer({
         },
       },
     } satisfies ApiMessage;
-  }, [currentUserId, gift, giftMessage, isStarGift, shouldHideName, shouldPayForUpgrade, peerId]);
+  }, [currentUserId, gift, giftMessage, isStarGift,
+    shouldHideName, shouldPayForUpgrade, peerId,
+    shouldPayByStars, hasPremiumByStars, giftByStars]);
 
   const handleGiftMessageChange = useLastCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
     setGiftMessage(e.target.value);
@@ -134,12 +160,20 @@ function GiftComposer({
     setShouldPayForUpgrade(!shouldPayForUpgrade);
   });
 
+  const toggleShouldPayByStars = useLastCallback(() => {
+    if (hasPremiumByStars) setShouldPayByStars(!shouldPayByStars);
+  });
+
   const handleOpenUpgradePreview = useLastCallback(() => {
     if (!isStarGift) return;
     openGiftUpgradeModal({
       giftId: gift.id,
       peerId,
     });
+  });
+
+  const handleGetMoreStars = useLastCallback(() => {
+    openStarsBalanceModal({});
   });
 
   const handleMainButtonClick = useLastCallback(() => {
@@ -154,6 +188,16 @@ function GiftComposer({
       return;
     }
 
+    if (shouldPayByStars && hasPremiumByStars) {
+      sendPremiumGiftByStars({
+        userId: peerId,
+        months: giftByStars.months,
+        amount: giftByStars.amount,
+        message: giftMessage ? { text: giftMessage } : undefined,
+      });
+      return;
+    }
+
     openInvoice({
       type: 'giftcode',
       userIds: [peerId],
@@ -164,23 +208,62 @@ function GiftComposer({
     });
   });
 
+  const canUseStarsPayment = hasPremiumByStars && starBalance && (starBalance.amount > giftByStars.amount);
   function renderOptionsSection() {
     const symbolsLeft = captionLimit ? captionLimit - giftMessage.length : undefined;
 
     const title = getPeerTitle(lang, peer!)!;
     return (
       <div className={styles.optionsSection}>
-        <TextArea
-          className={styles.messageInput}
-          onChange={handleGiftMessageChange}
-          value={giftMessage}
-          label={lang('GiftMessagePlaceholder')}
-          maxLength={captionLimit}
-          maxLengthIndicator={symbolsLeft && symbolsLeft < LIMIT_DISPLAY_THRESHOLD ? symbolsLeft.toString() : undefined}
-        />
 
-        {isStarGift && gift.upgradeStars && (
-          <ListItem className={styles.switcher} narrow ripple onClick={handleShouldPayForUpgradeChange}>
+        {!paidMessagesStars && (
+          <TextArea
+            className={styles.messageInput}
+            onChange={handleGiftMessageChange}
+            value={giftMessage}
+            label={lang('GiftMessagePlaceholder')}
+            maxLength={captionLimit}
+            maxLengthIndicator={
+              symbolsLeft && symbolsLeft < LIMIT_DISPLAY_THRESHOLD ? symbolsLeft.toString() : undefined
+            }
+          />
+        )}
+
+        {canUseStarsPayment && (
+          <ListItem className={styles.switcher} narrow ripple onClick={toggleShouldPayByStars}>
+            <span>
+              {lang('GiftPremiumPayWithStars', {
+                stars: formatStarsAsIcon(lang, giftByStars.amount, { className: styles.switcherStarIcon }),
+              }, { withNodes: true })}
+            </span>
+            <Switcher
+              checked={shouldPayByStars}
+              onChange={toggleShouldPayByStars}
+              label={lang('GiftPremiumPayWithStarsAcc')}
+            />
+          </ListItem>
+        )}
+
+        {hasPremiumByStars && starBalance && (
+          <div className={styles.description}>
+            {lang('GiftPremiumDescriptionYourBalance', {
+              stars: formatStarsAsIcon(lang, starBalance.amount, { className: styles.switcherStarIcon }),
+              link: <Link isPrimary onClick={handleGetMoreStars}>{lang('GetMoreStarsLinkText')}</Link>,
+            }, {
+              withNodes: true,
+              withMarkdown: true,
+            })}
+          </div>
+        )}
+
+        {isStarGift && gift.upgradeStars && !areUniqueStarGiftsDisallowed && (
+          <ListItem
+            className={styles.switcher}
+            narrow
+            ripple
+            onClick={handleShouldPayForUpgradeChange}
+            disabled={shouldDisallowLimitedStarGifts}
+          >
             <span>
               {lang('GiftMakeUnique', {
                 stars: formatStarsAsIcon(lang, gift.upgradeStars, { className: styles.switcherStarIcon }),
@@ -193,7 +276,7 @@ function GiftComposer({
             />
           </ListItem>
         )}
-        {isStarGift && gift.upgradeStars && (
+        {isStarGift && gift.upgradeStars && !areUniqueStarGiftsDisallowed && (
           <div className={styles.description}>
             {isPeerUser
               ? lang('GiftMakeUniqueDescription', {
@@ -233,9 +316,11 @@ function GiftComposer({
   }
 
   function renderFooter() {
-    const amount = isStarGift
-      ? formatStarsAsIcon(lang, gift.stars + (shouldPayForUpgrade ? gift.upgradeStars! : 0), { asFont: true })
-      : formatCurrency(lang, gift.amount, gift.currency);
+    const amount = shouldPayByStars && hasPremiumByStars
+      ? formatStarsAsIcon(lang, giftByStars.amount, { asFont: true })
+      : isStarGift
+        ? formatStarsAsIcon(lang, gift.stars + (shouldPayForUpgrade ? gift.upgradeStars! : 0), { asFont: true })
+        : formatCurrency(lang, gift.amount, gift.currency);
 
     return (
       <div className={styles.footer}>
@@ -307,16 +392,28 @@ export default memo(withGlobal<OwnProps>(
   (global, { peerId }): StateProps => {
     const theme = selectTheme(global);
     const {
+      stars,
+    } = global;
+    const {
       isBlurred: isBackgroundBlurred,
       patternColor,
       background: customBackground,
       backgroundColor,
-    } = global.settings.themes[theme] || {};
+    } = selectThemeValues(global, theme) || {};
     const peer = selectPeer(global, peerId);
+    const paidMessagesStars = selectPeerPaidMessagesStars(global, peerId);
+    const userFullInfo = selectUserFullInfo(global, peerId);
+    const currentUserId = global.currentUserId;
+    const isGiftForSelf = currentUserId === peerId;
+    const areUniqueStarGiftsDisallowed = !isGiftForSelf
+      && userFullInfo?.disallowedGifts?.shouldDisallowUniqueStarGifts;
+    const shouldDisallowLimitedStarGifts = !isGiftForSelf
+      && userFullInfo?.disallowedGifts?.shouldDisallowLimitedStarGifts;
 
     const tabState = selectTabState(global);
 
     return {
+      starBalance: stars?.balance,
       peer,
       theme,
       isBackgroundBlurred,
@@ -326,6 +423,9 @@ export default memo(withGlobal<OwnProps>(
       captionLimit: global.appConfig?.starGiftMaxMessageLength,
       currentUserId: global.currentUserId,
       isPaymentFormLoading: tabState.isPaymentFormLoading,
+      paidMessagesStars,
+      areUniqueStarGiftsDisallowed,
+      shouldDisallowLimitedStarGifts,
     };
   },
 )(GiftComposer));

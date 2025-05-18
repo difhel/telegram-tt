@@ -13,12 +13,14 @@ export const PRODUCTION_HOSTNAME = 'web.telegram.org';
 export const PRODUCTION_URL = 'https://web.telegram.org/a';
 export const WEB_VERSION_BASE = 'https://web.telegram.org/'; // Used to redirect to other versions
 export const BASE_URL = process.env.BASE_URL;
+export const ACCOUNT_QUERY = 'account';
 
 export const IS_MOCKED_CLIENT = process.env.APP_MOCKED_CLIENT === '1';
 export const IS_TEST = process.env.APP_ENV === 'test';
 export const IS_PERF = process.env.APP_ENV === 'perf';
 export const IS_BETA = process.env.APP_ENV === 'staging';
 export const IS_PACKAGED_ELECTRON = process.env.IS_PACKAGED_ELECTRON;
+export const PAID_MESSAGES_PURPOSE = 'paid_messages';
 
 export const DEBUG = process.env.APP_ENV !== 'production';
 export const DEBUG_MORE = false;
@@ -37,11 +39,14 @@ export const INACTIVE_MARKER = '[Inactive]';
 
 export const DEBUG_PAYMENT_SMART_GLOCAL = false;
 
-export const SESSION_USER_KEY = 'user_auth';
+export const SESSION_LEGACY_USER_KEY = 'user_auth';
+export const SESSION_ACCOUNT_PREFIX = 'account';
 export const LEGACY_PASSCODE_CACHE_NAME = 'tt-passcode';
 
+export const MULTIACCOUNT_MAX_SLOTS = 6;
 export const GLOBAL_STATE_CACHE_DISABLED = false;
-export const GLOBAL_STATE_CACHE_KEY = 'tt-global-state';
+export const GLOBAL_STATE_CACHE_PREFIX = 'tt-global-state';
+export const SHARED_STATE_CACHE_KEY = 'tt-shared-state';
 export const GLOBAL_STATE_CACHE_USER_LIST_LIMIT = 500;
 export const GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT = 200;
 export const GLOBAL_STATE_CACHE_ARCHIVED_CHAT_LIST_LIMIT = 10;
@@ -59,9 +64,10 @@ export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
 export const LANG_CACHE_NAME = 'tt-lang-packs-v49';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
-export const DATA_BROADCAST_CHANNEL_NAME = 'tt-global';
-export const ESTABLISH_BROADCAST_CHANNEL_NAME = 'tt-establish';
-export const MULTITAB_LOCALSTORAGE_KEY = 'tt-multitab';
+export const DATA_BROADCAST_CHANNEL_PREFIX = 'tt-global';
+export const ESTABLISH_BROADCAST_CHANNEL_PREFIX = 'tt-establish';
+export const MULTITAB_LOCALSTORAGE_KEY_PREFIX = 'tt-multitab';
+export const DC_IDS = [1, 2, 3, 4, 5] as const;
 
 export const DOWNLOAD_WORKERS = 16;
 export const UPLOAD_WORKERS = 16;
@@ -121,6 +127,10 @@ export const TOP_CHAT_MESSAGES_PRELOAD_LIMIT = 20;
 
 export const SPONSORED_MESSAGE_CACHE_MS = 300000; // 5 min
 
+export const DEFAULT_CHARGE_FOR_MESSAGES = 250;
+export const MINIMUM_CHARGE_FOR_MESSAGES = 1;
+export const DEFAULT_MAXIMUM_CHARGE_FOR_MESSAGES = 10000;
+
 export const DEFAULT_VOLUME = 1;
 export const DEFAULT_PLAYBACK_RATE = 1;
 export const PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION = 20 * 60; // 20 min
@@ -177,6 +187,7 @@ export const TMP_CHAT_ID = '0';
 export const ANIMATION_END_DELAY = 100;
 export const ANIMATION_WAVE_MIN_INTERVAL = 200;
 export const MESSAGE_APPEARANCE_DELAY = 10;
+export const PAID_SEND_DELAY = 5000;
 
 export const SCROLL_MIN_DURATION = 300;
 export const SCROLL_MAX_DURATION = 600;
@@ -387,6 +398,7 @@ export const DEFAULT_LIMITS: Record<ApiLimitType, readonly [number, number]> = {
   chatlistJoined: [2, 20],
   recommendedChannels: [10, 100],
   savedDialogsPinned: [5, 100],
+  moreAccounts: [3, MULTIACCOUNT_MAX_SLOTS],
 };
 export const DEFAULT_MAX_MESSAGE_LENGTH = 4096;
 
@@ -439,6 +451,7 @@ export const PREMIUM_LIMITS_ORDER: ApiLimitTypeForPromo[] = [
   'captionLength',
   'dialogFilters',
   'dialogFiltersChats',
+  'moreAccounts',
   'recommendedChannels',
 ];
 

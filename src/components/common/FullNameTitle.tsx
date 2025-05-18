@@ -15,8 +15,8 @@ import {
   isAnonymousForwardsChat,
   isChatWithRepliesBot,
   isChatWithVerificationCodesBot,
-  isPeerUser,
 } from '../../global/helpers';
+import { isApiPeerUser } from '../../global/helpers/peers';
 import buildClassName from '../../util/buildClassName';
 import buildStyle from '../../util/buildStyle';
 import { copyTextToClipboard } from '../../util/clipboard';
@@ -63,19 +63,20 @@ const FullNameTitle: FC<OwnProps> = ({
   noLoopLimit,
   canCopyTitle,
   iconElement,
+  statusSparklesColor,
   onEmojiStatusClick,
   observeIntersection,
-  statusSparklesColor,
 }) => {
   const lang = useOldLang();
   const { showNotification } = getActions();
   const realPeer = 'id' in peer ? peer : undefined;
   const customPeer = 'isCustomPeer' in peer ? peer : undefined;
-  const isUser = realPeer && isPeerUser(realPeer);
+  const isUser = realPeer && isApiPeerUser(realPeer);
   const title = realPeer && (isUser ? getUserFullName(realPeer) : getChatTitle(lang, realPeer));
-  const isPremium = isUser && realPeer.isPremium;
-  const canShowEmojiStatus = withEmojiStatus && !isSavedMessages && realPeer;
-  const emojiStatus = realPeer?.emojiStatus;
+  const isPremium = (isUser && realPeer.isPremium) || customPeer?.isPremium;
+  const canShowEmojiStatus = withEmojiStatus && !isSavedMessages;
+  const emojiStatus = realPeer?.emojiStatus
+    || (customPeer?.emojiStatusId ? { type: 'regular', documentId: customPeer.emojiStatusId } : undefined);
 
   const handleTitleClick = useLastCallback((e) => {
     if (!title || !canCopyTitle) {
@@ -89,7 +90,7 @@ const FullNameTitle: FC<OwnProps> = ({
 
   const specialTitle = useMemo(() => {
     if (customPeer) {
-      return customPeer.title || lang(customPeer.titleKey!);
+      return renderText(customPeer.title || lang(customPeer.titleKey!));
     }
 
     if (isSavedMessages) {
@@ -140,8 +141,8 @@ const FullNameTitle: FC<OwnProps> = ({
           {!noFake && peer?.fakeType && <FakeIcon fakeType={peer.fakeType} />}
           {canShowEmojiStatus && emojiStatus && (
             <Transition
-              className={styles.transition}
-              slideClassName={styles.transitionSlide}
+              className={styles.statusTransition}
+              slideClassName={styles.statusTransitionSlide}
               activeKey={Number(emojiStatus.documentId)}
               name="slideFade"
               direction={-1}

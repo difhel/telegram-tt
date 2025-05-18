@@ -30,10 +30,10 @@ import {
   selectUserFullInfo,
   selectWebApp,
 } from '../../../global/selectors';
+import { getGeolocationStatus, IS_GEOLOCATION_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import download from '../../../util/download';
 import { extractCurrentThemeParams, validateHexColor } from '../../../util/themeStyle';
-import { getGeolocationStatus, IS_GEOLOCATION_SUPPORTED } from '../../../util/windowEnvironment';
 import { callApi } from '../../../api/gramjs';
 import renderText from '../../common/helpers/renderText';
 
@@ -754,7 +754,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
                 course: geolocation?.heading,
                 speed: geolocation?.speed,
                 horizontal_accuracy: geolocation?.accuracy,
-                vertical_accuracy: geolocation?.accuracy,
+                vertical_accuracy: geolocation?.altitudeAccuracy,
               },
             });
           } else {
@@ -1060,7 +1060,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         src={url}
         title={`${bot?.firstName} Web App`}
         sandbox={SANDBOX_ATTRIBUTES}
-        allow="camera; microphone; geolocation;"
+        allow="camera; microphone; geolocation; clipboard-write;"
         allowFullScreen
         ref={frameRef}
       />

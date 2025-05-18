@@ -15,9 +15,11 @@ import ChatInviteModal from './chatInvite/ChatInviteModal.async';
 import ChatlistModal from './chatlist/ChatlistModal.async';
 import CollectibleInfoModal from './collectible/CollectibleInfoModal.async';
 import EmojiStatusAccessModal from './emojiStatusAccess/EmojiStatusAccessModal.async';
+import FrozenAccountModal from './frozenAccount/FrozenAccountModal.async';
 import PremiumGiftModal from './gift/GiftModal.async';
 import GiftInfoModal from './gift/info/GiftInfoModal.async';
 import GiftRecipientPicker from './gift/recipient/GiftRecipientPicker.async';
+import GiftResalePriceComposerModal from './gift/resale/GiftResalePriceComposerModal.async';
 import GiftStatusInfoModal from './gift/status/GiftStatusInfoModal.async';
 import GiftTransferModal from './gift/transfer/GiftTransferModal.async';
 import GiftUpgradeModal from './gift/upgrade/GiftUpgradeModal.async';
@@ -32,6 +34,7 @@ import PreparedMessageModal from './preparedMessage/PreparedMessageModal.async';
 import ReportAdModal from './reportAd/ReportAdModal.async';
 import ReportModal from './reportModal/ReportModal.async';
 import SharePreparedMessageModal from './sharePreparedMessage/SharePreparedMessageModal.async';
+import ChatRefundModal from './stars/chatRefund/ChatRefundModal.async';
 import StarsGiftModal from './stars/gift/StarsGiftModal.async';
 import StarsBalanceModal from './stars/StarsBalanceModal.async';
 import StarsPaymentModal from './stars/StarsPaymentModal.async';
@@ -67,6 +70,7 @@ type ModalKey = keyof Pick<TabState,
 'isGiftRecipientPickerOpen' |
 'isWebAppsCloseConfirmationModalOpen' |
 'giftInfoModal' |
+'giftResalePriceComposerModal' |
 'suggestedStatusModal' |
 'emojiStatusAccessModal' |
 'locationAccessModal' |
@@ -77,7 +81,9 @@ type ModalKey = keyof Pick<TabState,
 'preparedMessageModal' |
 'sharePreparedMessageModal' |
 'giftStatusInfoModal' |
-'giftTransferModal'
+'giftTransferModal' |
+'chatRefundModal' |
+'isFrozenAccountModalOpen'
 >;
 
 type StateProps = {
@@ -116,6 +122,7 @@ const MODALS: ModalRegistry = {
   isGiftRecipientPickerOpen: GiftRecipientPicker,
   isWebAppsCloseConfirmationModalOpen: WebAppsCloseConfirmationModal,
   giftInfoModal: GiftInfoModal,
+  giftResalePriceComposerModal: GiftResalePriceComposerModal,
   suggestedStatusModal: SuggestedStatusModal,
   emojiStatusAccessModal: EmojiStatusAccessModal,
   locationAccessModal: LocationAccessModal,
@@ -127,6 +134,8 @@ const MODALS: ModalRegistry = {
   preparedMessageModal: PreparedMessageModal,
   sharePreparedMessageModal: SharePreparedMessageModal,
   giftTransferModal: GiftTransferModal,
+  chatRefundModal: ChatRefundModal,
+  isFrozenAccountModalOpen: FrozenAccountModal,
 };
 const MODAL_KEYS = Object.keys(MODALS) as ModalKey[];
 const MODAL_ENTRIES = Object.entries(MODALS) as Entries<ModalRegistry>;

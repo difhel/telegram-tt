@@ -87,7 +87,17 @@ export interface GramJsAppConfig extends LimitsConfig {
   stargifts_convert_period_max?: number;
   starref_start_param_prefixes?: string[];
   ton_blockchain_explorer_url?: string;
+  stars_paid_messages_available?: boolean;
+  stars_usd_withdraw_rate_x1000?: number;
+  stars_paid_message_commission_permille?: number;
+  stars_paid_message_amount_max?: number;
   stargifts_pinned_to_top_limit?: number;
+  freeze_since_date?: number;
+  freeze_until_date?: number;
+  freeze_appeal_url?: string;
+  stars_stargift_resale_amount_max?: number;
+  stars_stargift_resale_amount_min?: number;
+  stars_stargift_resale_commission_permille?: number;
 }
 
 function buildEmojiSounds(appConfig: GramJsAppConfig) {
@@ -155,6 +165,7 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
       chatlistJoined: getLimit(appConfig, 'chatlist_joined_limit', 'chatlistJoined'),
       recommendedChannels: getLimit(appConfig, 'recommended_channels_limit', 'recommendedChannels'),
       savedDialogsPinned: getLimit(appConfig, 'saved_dialogs_pinned_limit', 'savedDialogsPinned'),
+      moreAccounts: DEFAULT_LIMITS.moreAccounts,
     },
     hash,
     areStoriesHidden: appConfig.stories_all_hidden,
@@ -164,6 +175,10 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
     maxPinnedStoriesCount: appConfig.stories_pinned_to_top_count_max,
     groupTranscribeLevelMin: appConfig.group_transcribe_level_min,
     canLimitNewMessagesWithoutPremium: appConfig.new_noncontact_peers_require_premium_without_ownpremium,
+    starsPaidMessagesAvailable: appConfig.stars_paid_messages_available,
+    starsPaidMessageCommissionPermille: appConfig.stars_paid_message_commission_permille,
+    starsPaidMessageAmountMax: appConfig.stars_paid_message_amount_max,
+    starsUsdWithdrawRateX1000: appConfig.stars_usd_withdraw_rate_x1000,
     bandwidthPremiumNotifyPeriod: appConfig.upload_premium_speedup_notify_period,
     bandwidthPremiumUploadSpeedup: appConfig.upload_premium_speedup_upload,
     bandwidthPremiumDownloadSpeedup: appConfig.upload_premium_speedup_download,
@@ -176,5 +191,11 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
     starRefStartPrefixes: appConfig.starref_start_param_prefixes,
     tonExplorerUrl: appConfig.ton_blockchain_explorer_url,
     savedGiftPinLimit: appConfig.stargifts_pinned_to_top_limit,
+    freezeSinceDate: appConfig.freeze_since_date,
+    freezeUntilDate: appConfig.freeze_until_date,
+    freezeAppealUrl: appConfig.freeze_appeal_url,
+    starsStargiftResaleAmountMin: appConfig.stars_stargift_resale_amount_min,
+    starsStargiftResaleAmountMax: appConfig.stars_stargift_resale_amount_max,
+    starsStargiftResaleCommissionPermille: appConfig.stars_stargift_resale_commission_permille,
   };
 }

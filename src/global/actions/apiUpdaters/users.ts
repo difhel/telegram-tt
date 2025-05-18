@@ -106,6 +106,36 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         },
       });
     }
+
+    case 'updateBotCommands': {
+      const { botId, commands } = update;
+      const targetUserFullInfo = selectUserFullInfo(global, botId);
+      if (!targetUserFullInfo?.botInfo) {
+        return undefined;
+      }
+
+      return updateUserFullInfo(global, botId, {
+        botInfo: {
+          ...targetUserFullInfo.botInfo,
+          commands,
+        },
+      });
+    }
+
+    case 'updatePeerSettings': {
+      const { id, settings } = update;
+
+      const targetUserFullInfo = selectUserFullInfo(global, id);
+      if (!targetUserFullInfo?.botInfo) {
+        actions.loadFullUser({ userId: id });
+        return undefined;
+      }
+
+      global = updateUserFullInfo(global, id, {
+        settings,
+      });
+      return global;
+    }
   }
 
   return undefined;

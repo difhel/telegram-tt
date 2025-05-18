@@ -1,9 +1,10 @@
 import type { FC } from '../../../lib/teact/teact';
 import React, { memo, useCallback, useState } from '../../../lib/teact/teact';
+import { getActions } from '../../../global';
 
 import { LeftColumnContent } from '../../../types';
 
-import { LAYERS_ANIMATION_NAME } from '../../../util/windowEnvironment';
+import { LAYERS_ANIMATION_NAME } from '../../../util/browser/windowEnvironment';
 
 import Transition from '../../ui/Transition';
 import NewChatStep1 from './NewChatStep1';
@@ -15,7 +16,6 @@ export type OwnProps = {
   isActive: boolean;
   isChannel?: boolean;
   content: LeftColumnContent;
-  onContentChange: (content: LeftColumnContent) => void;
   onReset: () => void;
 };
 
@@ -25,14 +25,16 @@ const NewChat: FC<OwnProps> = ({
   isActive,
   isChannel = false,
   content,
-  onContentChange,
   onReset,
 }) => {
+  const { openLeftColumnContent } = getActions();
   const [newChatMemberIds, setNewChatMemberIds] = useState<string[]>([]);
 
   const handleNextStep = useCallback(() => {
-    onContentChange(isChannel ? LeftColumnContent.NewChannelStep2 : LeftColumnContent.NewGroupStep2);
-  }, [isChannel, onContentChange]);
+    openLeftColumnContent({
+      contentKey: isChannel ? LeftColumnContent.NewChannelStep2 : LeftColumnContent.NewGroupStep2,
+    });
+  }, [isChannel]);
 
   return (
     <Transition
