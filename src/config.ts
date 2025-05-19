@@ -5,12 +5,12 @@ import type {
   GiftProfileFilterOptions,
 } from './types';
 
-export const APP_CODE_NAME = 'A';
+export const APP_CODE_NAME = 'D';
 export const APP_NAME = process.env.APP_NAME || `Telegram Web ${APP_CODE_NAME}`;
 export const RELEASE_DATETIME = process.env.RELEASE_DATETIME;
 
-export const PRODUCTION_HOSTNAME = 'web.telegram.org';
-export const PRODUCTION_URL = 'https://web.telegram.org/a';
+export const PRODUCTION_HOSTNAME = 'telegram-d-with-bugs-and-bananas.netlify.app';
+export const PRODUCTION_URL = 'https://telegram-d-with-bugs-and-bananas.netlify.app/';
 export const WEB_VERSION_BASE = 'https://web.telegram.org/'; // Used to redirect to other versions
 export const BASE_URL = process.env.BASE_URL;
 export const ACCOUNT_QUERY = 'account';

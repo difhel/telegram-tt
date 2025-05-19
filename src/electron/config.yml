@@ -1,9 +1,9 @@
-productName: Telegram A
+productName: Telegram D
 artifactName: ${productName}-${arch}.${ext}
-appId: org.telegram.TelegramA
+appId: dev.difhel.telegram
 extraMetadata:
   main: ./dist/electron.js
-  productName: Telegram A
+  productName: Telegram D
 files:
   - "dist"
   - "package.json"
@@ -23,7 +23,7 @@ protocols:
       - tg
 publish:
   provider: github
-  owner: Ajaxy
+  owner: difhel
   repo: telegram-tt
   releaseType: draft
 win:
