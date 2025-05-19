@@ -12,8 +12,8 @@ import {
   getMessageMediaHash,
   getMessageSingleInlineButton,
   getMessageVideo,
-  getPeerTitle,
 } from '../../../global/helpers';
+import { getPeerTitle } from '../../../global/helpers/peers';
 import {
   selectAllowedMessageActionsSlow,
   selectChat,
@@ -22,9 +22,9 @@ import {
   selectForwardedSender,
   selectPinnedIds,
 } from '../../../global/selectors';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import cycleRestrict from '../../../util/cycleRestrict';
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { getPictogramDimensions, REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import renderKeyboardButtonText from '../composer/helpers/renderKeyboardButtonText';

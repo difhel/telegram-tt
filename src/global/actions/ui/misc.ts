@@ -7,6 +7,7 @@ import {
   ANIMATION_WAVE_MIN_INTERVAL,
   DEBUG, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT, INACTIVE_MARKER, PAGE_TITLE,
 } from '../../../config';
+import { IS_ELECTRON, IS_WAVE_TRANSFORM_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import { getAllMultitabTokens, getCurrentTabId, reestablishMasterToSelf } from '../../../util/establishMultitabRole';
 import { getAllNotificationsCount } from '../../../util/folderManager';
 import generateUniqueId from '../../../util/generateUniqueId';
@@ -17,7 +18,6 @@ import { refreshFromCache } from '../../../util/localization';
 import * as langProvider from '../../../util/oldLangProvider';
 import updateIcon from '../../../util/updateIcon';
 import { setPageTitle, setPageTitleInstant } from '../../../util/updatePageTitle';
-import { IS_ELECTRON, IS_WAVE_TRANSFORM_SUPPORTED } from '../../../util/windowEnvironment';
 import { getAllowedAttachmentOptions, getChatTitle } from '../../helpers';
 import {
   addActionHandler, getActions, getGlobal, setGlobal,
@@ -32,10 +32,12 @@ import {
   selectCurrentMessageList,
   selectIsCurrentUserPremium,
   selectIsTrustedBot,
+  selectPeerPaidMessagesStars,
   selectSender,
   selectTabState,
   selectTopic,
 } from '../../selectors';
+import { selectSharedSettings } from '../../selectors/sharedState';
 
 import { getIsMobile, getIsTablet } from '../../../hooks/useAppLayout';
 
@@ -325,7 +327,19 @@ addActionHandler('showNotification', (global, actions, payload): ActionReturnTyp
 });
 
 addActionHandler('showAllowedMessageTypesNotification', (global, actions, payload): ActionReturnType => {
-  const { chatId, tabId = getCurrentTabId() } = payload;
+  const { chatId, messageListType, tabId = getCurrentTabId() } = payload;
+
+  const paidMessagesStars = selectPeerPaidMessagesStars(global, chatId);
+
+  if (paidMessagesStars && messageListType === 'scheduled') {
+    actions.showNotification({
+      message: {
+        key: 'DescriptionScheduledPaidMessagesNotAllowed',
+      },
+      tabId,
+    });
+    return;
+  }
 
   const chat = selectChat(global, chatId);
   if (!chat) return;
@@ -540,6 +554,21 @@ addActionHandler('hideEffectInComposer', (global, actions, payload): ActionRetur
   return updateTabState(global, {
     shouldPlayEffectInComposer: undefined,
   }, tabId);
+});
+
+addActionHandler('setPaidMessageAutoApprove', (global): ActionReturnType => {
+  global = {
+    ...global,
+    settings: {
+      ...global.settings,
+      byKey: {
+        ...global.settings.byKey,
+        shouldPaidMessageAutoApprove: true,
+      },
+    },
+  };
+
+  return global;
 });
 
 addActionHandler('setReactionEffect', (global, actions, payload): ActionReturnType => {
@@ -769,7 +798,7 @@ addActionHandler('onTabFocusChange', (global, actions, payload): ActionReturnTyp
 
 addActionHandler('updatePageTitle', (global, actions, payload): ActionReturnType => {
   const { tabId = getCurrentTabId() } = payload || {};
-  const { canDisplayChatInTitle } = global.settings.byKey;
+  const { canDisplayChatInTitle } = selectSharedSettings(global);
   const currentUserId = global.currentUserId;
   const isTestServer = global.config?.isTestServer;
   const prefix = isTestServer ? '[T] ' : '';

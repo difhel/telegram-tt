@@ -60,6 +60,7 @@ import {
   buildApiFormattedText,
   buildApiPhoto,
 } from './common';
+import { type OmitVirtualFields } from './helpers';
 import { buildApiMessageAction } from './messageActions';
 import { buildMessageContent, buildMessageMediaContent, buildMessageTextContent } from './messageContent';
 import { buildApiPeerColor, buildApiPeerId, getApiChatIdFromMtpPeer } from './peers';
@@ -168,9 +169,10 @@ export function buildApiMessageFromNotification(
   };
 }
 
+type TypeMessageWithContent = OmitVirtualFields<GramJs.Message> & OmitVirtualFields<GramJs.MessageService>;
 export type UniversalMessage = (
-  Pick<GramJs.Message & GramJs.MessageService, ('id' | 'date' | 'peerId')>
-  & Partial<GramJs.Message & GramJs.MessageService>
+  Pick<TypeMessageWithContent, ('id' | 'date' | 'peerId')>
+  & Partial<TypeMessageWithContent>
 );
 
 export function buildApiMessageWithChatId(
@@ -267,6 +269,7 @@ export function buildApiMessageWithChatId(
     isInvertedMedia,
     isVideoProcessingPending,
     reportDeliveryUntilDate: mtpMessage.reportDeliveryUntilDate,
+    paidMessageStars: mtpMessage.paidMessageStars?.toJSNumber(),
   };
 }
 
@@ -285,6 +288,7 @@ export function buildMessageDraft(draft: GramJs.TypeDraftMessage): ApiDraft | un
     replyToTopId: replyTo.topMsgId,
     replyToPeerId: replyTo.replyToPeerId && getApiChatIdFromMtpPeer(replyTo.replyToPeerId),
     quoteText: replyTo.quoteText ? buildMessageTextContent(replyTo.quoteText, replyTo.quoteEntities) : undefined,
+    quoteOffset: replyTo.quoteOffset,
   } satisfies ApiInputMessageReplyInfo : undefined;
 
   return {
@@ -339,6 +343,7 @@ function buildApiReplyInfo(
       quote,
       quoteText,
       quoteEntities,
+      quoteOffset,
     } = replyHeader;
 
     return {
@@ -351,6 +356,7 @@ function buildApiReplyInfo(
       replyMedia: replyMedia && buildMessageMediaContent(replyMedia, context),
       isQuote: quote,
       quoteText: quoteText ? buildMessageTextContent(quoteText, quoteEntities) : undefined,
+      quoteOffset,
     };
   }
 
@@ -392,6 +398,8 @@ export function buildLocalMessage(
   story?: ApiStory | ApiStorySkipped,
   isInvertedMedia?: true,
   effectId?: string,
+  isPending?: true,
+  messagePriceInStars?: number,
 ) {
   const localId = getNextLocalMessageId(lastMessageId);
   const media = attachment && buildUploadingMedia(attachment);
@@ -427,11 +435,13 @@ export function buildLocalMessage(
     isForwardingAllowed: true,
     isInvertedMedia,
     effectId,
+    ...(isPending && { sendingState: 'messageSendingStatePending' }),
+    ...(messagePriceInStars && { paidMessageStars: messagePriceInStars }),
   } satisfies ApiMessage;
 
   const emojiOnlyCount = getEmojiOnlyCountForMessage(message.content, message.groupedId);
 
-  const finalMessage = {
+  const finalMessage : ApiMessage = {
     ...message,
     ...(emojiOnlyCount && { emojiOnlyCount }),
   };
@@ -549,6 +559,7 @@ function buildReplyInfo(inputInfo: ApiInputReplyInfo, isForum?: boolean): ApiRep
     replyToTopId: inputInfo.replyToTopId,
     replyToPeerId: inputInfo.replyToPeerId,
     quoteText: inputInfo.quoteText,
+    quoteOffset: inputInfo.quoteOffset,
     isForumTopic: isForum && inputInfo.replyToTopId ? true : undefined,
     ...(Boolean(inputInfo.quoteText) && { isQuote: true }),
   };

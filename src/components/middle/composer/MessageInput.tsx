@@ -1,5 +1,5 @@
 import type { ChangeEvent, RefObject } from 'react';
-import type { FC } from '../../../lib/teact/teact';
+import type { FC, TeactNode } from '../../../lib/teact/teact';
 import React, {
   getIsHeavyAnimating,
   memo, useEffect, useLayoutEffect,
@@ -8,21 +8,24 @@ import React, {
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiInputMessageReplyInfo } from '../../../api/types';
-import type { IAnchorPosition, ISettings, ThreadId } from '../../../types';
+import type {
+  IAnchorPosition, MessageListType, SharedSettings, ThreadId,
+} from '../../../types';
 import type { Signal } from '../../../util/signals';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
 import { requestForcedReflow, requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { selectCanPlayAnimatedEmojis, selectDraft, selectIsInSelectMode } from '../../../global/selectors';
+import { selectSharedSettings } from '../../../global/selectors/sharedState';
+import {
+  IS_ANDROID, IS_EMOJI_SUPPORTED, IS_IOS, IS_TOUCH_ENV,
+} from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import captureKeyboardListeners from '../../../util/captureKeyboardListeners';
 import { getIsDirectTextInputDisabled } from '../../../util/directInputManager';
 import parseEmojiOnlyString from '../../../util/emoji/parseEmojiOnlyString';
 import focusEditableElement from '../../../util/focusEditableElement';
-import { debounce } from '../../../util/schedulers';
-import {
-  IS_ANDROID, IS_EMOJI_SUPPORTED, IS_IOS, IS_TOUCH_ENV,
-} from '../../../util/windowEnvironment';
+import { debounce, fastRaf } from '../../../util/schedulers';
 import renderText from '../../common/helpers/renderText';
 import { isSelectionInsideInput } from './helpers/selection';
 
@@ -58,7 +61,7 @@ type OwnProps = {
   isReady: boolean;
   isActive: boolean;
   getHtml: Signal<string>;
-  placeholder: string;
+  placeholder: TeactNode | string;
   timedPlaceholderLangKey?: string;
   timedPlaceholderDate?: number;
   forcedPlaceholder?: string;
@@ -75,12 +78,13 @@ type OwnProps = {
   onFocus?: NoneToVoidFunction;
   onBlur?: NoneToVoidFunction;
   isNeedPremium?: boolean;
+  messageListType?: MessageListType;
 };
 
 type StateProps = {
   replyInfo?: ApiInputMessageReplyInfo;
   isSelectModeActive?: boolean;
-  messageSendKeyCombo?: ISettings['messageSendKeyCombo'];
+  messageSendKeyCombo?: SharedSettings['messageSendKeyCombo'];
   canPlayAnimatedEmojis: boolean;
 };
 
@@ -141,6 +145,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   onFocus,
   onBlur,
   isNeedPremium,
+  messageListType,
 }) => {
   const {
     editLastMessage,
@@ -168,7 +173,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   // eslint-disable-next-line no-null/no-null
   const absoluteContainerRef = useRef<HTMLDivElement>(null);
 
-  const lang = useOldLang();
+  const oldLang = useOldLang();
   const isContextMenuOpenRef = useRef(false);
   const [isTextFormatterOpen, openTextFormatter, closeTextFormatter] = useFlag();
   const [textFormatterAnchorPosition, setTextFormatterAnchorPosition] = useState<IAnchorPosition>();
@@ -203,35 +208,38 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     ? MAX_ATTACHMENT_MODAL_INPUT_HEIGHT
     : isStoryInput ? MAX_STORY_MODAL_INPUT_HEIGHT : (isMobile ? 256 : 416);
   const updateInputHeight = useLastCallback((willSend = false) => {
-    requestForcedReflow(() => {
-      const scroller = inputRef.current!.closest<HTMLDivElement>(`.${SCROLLER_CLASS}`)!;
-      const currentHeight = Number(scroller.style.height.replace('px', ''));
-      const clone = scrollerCloneRef.current!;
-      const { scrollHeight } = clone;
-      const newHeight = Math.min(scrollHeight, maxInputHeight);
+    // Defer to avoid animation/layout conflicts during DOM updates
+    fastRaf(() => {
+      requestForcedReflow(() => {
+        const scroller = inputRef.current!.closest<HTMLDivElement>(`.${SCROLLER_CLASS}`)!;
+        const currentHeight = Number(scroller.style.height.replace('px', ''));
+        const clone = scrollerCloneRef.current!;
+        const { scrollHeight } = clone;
+        const newHeight = Math.min(scrollHeight, maxInputHeight);
 
-      if (newHeight === currentHeight) {
-        return undefined;
-      }
+        if (newHeight === currentHeight) {
+          return undefined;
+        }
 
-      const isOverflown = scrollHeight > maxInputHeight;
+        const isOverflown = scrollHeight > maxInputHeight;
 
-      function exec() {
-        const transitionDuration = Math.round(
-          TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
-        );
-        scroller.style.height = `${newHeight}px`;
-        scroller.style.transitionDuration = `${transitionDuration}ms`;
-        scroller.classList.toggle('overflown', isOverflown);
-      }
+        function exec() {
+          const transitionDuration = Math.round(
+            TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
+          );
+          scroller.style.height = `${newHeight}px`;
+          scroller.style.transitionDuration = `${transitionDuration}ms`;
+          scroller.classList.toggle('overflown', isOverflown);
+        }
 
-      if (willSend) {
-        // Delay to next frame to sync with sending animation
-        requestMutation(exec);
-        return undefined;
-      } else {
-        return exec;
-      }
+        if (willSend) {
+          // Delay to next frame to sync with sending animation
+          requestMutation(exec);
+          return undefined;
+        } else {
+          return exec;
+        }
+      });
     });
   });
 
@@ -456,7 +464,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
 
   function handleClick() {
     if (isAttachmentModalInput || canSendPlainText || (isStoryInput && isNeedPremium)) return;
-    showAllowedMessageTypesNotification({ chatId });
+    showAllowedMessageTypesNotification({ chatId, messageListType });
   }
 
   const handleOpenPremiumModal = useLastCallback(() => openPremiumModal());
@@ -561,9 +569,10 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   );
 
   const inputScrollerContentClass = buildClassName('input-scroller-content', isNeedPremium && 'is-need-premium');
+  const placeholderAriaLabel = typeof placeholder === 'string' ? placeholder : undefined;
 
   return (
-    <div id={id} onClick={shouldSuppressFocus ? onSuppressedFocus : undefined} dir={lang.isRtl ? 'rtl' : undefined}>
+    <div id={id} onClick={shouldSuppressFocus ? onSuppressedFocus : undefined} dir={oldLang.isRtl ? 'rtl' : undefined}>
       <div
         className={buildClassName('custom-scroll', SCROLLER_CLASS, isNeedPremium && 'is-need-premium')}
         onScroll={onScroll}
@@ -584,7 +593,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
             onMouseDown={handleMouseDown}
             onContextMenu={IS_ANDROID ? handleAndroidContextMenu : undefined}
             onTouchCancel={IS_ANDROID ? processSelectionWithTimeout : undefined}
-            aria-label={placeholder}
+            aria-label={placeholderAriaLabel}
             onFocus={!isNeedPremium ? onFocus : undefined}
             onBlur={!isNeedPremium ? onBlur : undefined}
           />
@@ -604,7 +613,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
               ) : placeholder}
               {isStoryInput && isNeedPremium && (
                 <Button className="unlock-button" size="tiny" color="adaptive" onClick={handleOpenPremiumModal}>
-                  {lang('StoryRepliesLockedButton')}
+                  {oldLang('StoryRepliesLockedButton')}
                 </Button>
               )}
             </span>
@@ -644,7 +653,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, { chatId, threadId }: OwnProps): StateProps => {
-    const { messageSendKeyCombo } = global.settings.byKey;
+    const { messageSendKeyCombo } = selectSharedSettings(global);
 
     return {
       messageSendKeyCombo,

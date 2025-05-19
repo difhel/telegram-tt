@@ -400,6 +400,7 @@ body:not(.is-ios) {
   --color-message-reaction-hover-own: rgb(91, 82, 155);
   --color-message-reaction-chosen-hover: rgb(120, 100, 221);
   --color-message-reaction-chosen-hover-own: rgb(245, 245, 245);
+  --color-message-non-contact: rgb(204, 238, 191);
   --color-voice-transcribe-button: rgb(42, 42, 60);
   --color-voice-transcribe-button-own: rgb(131, 115, 211);
   --color-topic-blue: rgb(111, 249, 240);
@@ -412,4 +413,16 @@ body:not(.is-ios) {
   --color-forum-unread-topic-hover: rgb(54, 54, 54);
   --color-forum-hover-unread-topic-hover: rgb(63, 63, 63);
   --color-chat-username: rgb(233, 238, 244);
+}
+
+/* stylelint-disable-next-line scss/at-rule-no-unknown */
+@view-transition {
+  /* stylelint-disable-next-line property-no-unknown */
+  navigation: auto;
+}
+
+:root {
+  &::view-transition-group(root) {
+    animation-duration: 400ms;
+  }
 }

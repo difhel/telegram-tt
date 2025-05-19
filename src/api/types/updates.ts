@@ -8,7 +8,7 @@ import type {
 } from '../../lib/secret-sauce';
 import type { ThreadId } from '../../types';
 import type { RegularLangFnParameters } from '../../util/localization';
-import type { ApiBotMenuButton } from './bots';
+import type { ApiBotCommand, ApiBotMenuButton } from './bots';
 import type {
   ApiGroupCall, ApiPhoneCall,
 } from './calls';
@@ -18,6 +18,7 @@ import type {
   ApiChatFullInfo,
   ApiChatMember,
   ApiDraft,
+  ApiPeerSettings,
   ApiTypingStatus,
 } from './chats';
 import type {
@@ -232,6 +233,8 @@ export type ApiUpdateMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  shouldForceReply?: boolean;
+  isFromNew?: true;
 };
 
 export type ApiUpdateScheduledMessage = {
@@ -240,6 +243,7 @@ export type ApiUpdateScheduledMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  isFromNew?: true;
 };
 
 export type ApiUpdateQuickReplyMessage = {
@@ -403,6 +407,12 @@ export type ApiDeleteContact = {
   id: string;
 };
 
+export type ApiUpdatePeerSettings = {
+  '@type': 'updatePeerSettings';
+  id: string;
+  settings: ApiPeerSettings;
+};
+
 export type ApiUpdateUser = {
   '@type': 'updateUser';
   id: string;
@@ -451,6 +461,11 @@ export type ApiUpdateMessageImage = {
 
 export type ApiUpdateError = {
   '@type': 'error';
+  error: ApiError;
+};
+
+export type ApiUpdateNotSupportedInFrozenAccountError = {
+  '@type': 'notSupportedInFrozenAccount';
   error: ApiError;
 };
 
@@ -812,6 +827,12 @@ export type ApiUpdateLangPack = {
   keysToRemove: string[];
 };
 
+export type ApiUpdateBotCommands = {
+  '@type': 'updateBotCommands';
+  botId: string;
+  commands?: ApiBotCommand[];
+};
+
 export type ApiUpdate = (
   ApiUpdateReady | ApiUpdateSession | ApiUpdateWebAuthTokenFailed | ApiUpdateRequestUserUpdate |
   ApiUpdateAuthorizationState | ApiUpdateAuthorizationError | ApiUpdateConnectionState | ApiUpdateCurrentUser |
@@ -822,7 +843,7 @@ export type ApiUpdate = (
   ApiUpdateDeleteMessages | ApiUpdateMessagePoll | ApiUpdateMessagePollVote | ApiUpdateDeleteHistory |
   ApiDeleteParticipantHistory | ApiUpdateMessageSendSucceeded | ApiUpdateMessageSendFailed |
   ApiUpdateServiceNotification | ApiDeleteContact | ApiUpdateUser | ApiUpdateUserStatus |
-  ApiUpdateUserFullInfo | ApiUpdateVideoProcessingPending |
+  ApiUpdateUserFullInfo | ApiUpdateVideoProcessingPending | ApiUpdatePeerSettings |
   ApiUpdateAvatar | ApiUpdateMessageImage | ApiUpdateDraftMessage |
   ApiUpdateError | ApiUpdateResetContacts | ApiUpdateStartEmojiInteraction |
   ApiUpdateFavoriteStickers | ApiUpdateStickerSet | ApiUpdateStickerSets | ApiUpdateStickerSetsOrder |
@@ -843,10 +864,10 @@ export type ApiUpdate = (
   ApiRequestReconnectApi | ApiRequestSync | ApiUpdateFetchingDifference | ApiUpdateChannelMessages |
   ApiUpdateStealthMode | ApiUpdateAttachMenuBots | ApiUpdateNewAuthorization | ApiUpdateGroupInvitePrivacyForbidden |
   ApiUpdateViewForumAsMessages | ApiUpdateSavedDialogPinned | ApiUpdatePinnedSavedDialogIds | ApiUpdateChatLastMessage |
-  ApiUpdateDeleteSavedHistory | ApiUpdatePremiumFloodWait | ApiUpdateStarsBalance |
+  ApiUpdateDeleteSavedHistory | ApiUpdatePremiumFloodWait | ApiUpdateStarsBalance | ApiUpdateBotCommands |
   ApiUpdateQuickReplyMessage | ApiUpdateQuickReplies | ApiDeleteQuickReply | ApiUpdateDeleteQuickReplyMessages |
   ApiUpdateDeleteProfilePhoto | ApiUpdateNewProfilePhoto | ApiUpdateEntities | ApiUpdatePaidReactionPrivacy |
-  ApiUpdateLangPackTooLong | ApiUpdateLangPack
+  ApiUpdateLangPackTooLong | ApiUpdateLangPack | ApiUpdateNotSupportedInFrozenAccountError
 );
 
 export type OnApiUpdate = (update: ApiUpdate) => void;

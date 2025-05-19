@@ -254,6 +254,7 @@ export interface ApiMessageActionStarGiftUnique extends ActionMediaType {
   fromId?: string;
   peerId?: string;
   savedId?: string;
+  resaleStars?: number;
 }
 
 export interface ApiMessageActionChannelJoined extends ActionMediaType {
@@ -266,6 +267,17 @@ export interface ApiMessageActionExpiredContent extends ActionMediaType {
   type: 'expired';
   isVoice?: true;
   isRoundVideo?: true;
+}
+
+export interface ApiMessageActionPaidMessagesRefunded extends ActionMediaType {
+  type: 'paidMessagesRefunded';
+  count:number;
+  stars:number;
+}
+
+export interface ApiMessageActionPaidMessagesPrice extends ActionMediaType {
+  type: 'paidMessagesPrice';
+  stars:number;
 }
 
 export interface ApiMessageActionUnsupported extends ActionMediaType {
@@ -284,4 +296,5 @@ export type ApiMessageAction = ApiMessageActionUnsupported | ApiMessageActionCha
 | ApiMessageActionTopicCreate | ApiMessageActionTopicEdit | ApiMessageActionSuggestProfilePhoto
 | ApiMessageActionChannelJoined | ApiMessageActionGiftCode | ApiMessageActionGiveawayLaunch
 | ApiMessageActionGiveawayResults | ApiMessageActionPaymentRefunded | ApiMessageActionGiftStars
-| ApiMessageActionPrizeStars | ApiMessageActionStarGift | ApiMessageActionStarGiftUnique;
+| ApiMessageActionPrizeStars | ApiMessageActionStarGift | ApiMessageActionStarGiftUnique
+| ApiMessageActionPaidMessagesRefunded | ApiMessageActionPaidMessagesPrice;

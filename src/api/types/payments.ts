@@ -319,6 +319,13 @@ export type ApiInputInvoiceGiveaway = {
   option: ApiPremiumGiftCodeOption;
 };
 
+export type ApiInputInvoicePremiumGiftStars = {
+  type: 'premiumGiftStars';
+  userId: string;
+  months: number;
+  message?: ApiFormattedText;
+};
+
 export type ApiInputInvoiceGiftCode = {
   type: 'giftcode';
   userIds: string[];
@@ -351,6 +358,12 @@ export type ApiInputInvoiceStarGift = {
   giftId: string;
   message?: ApiFormattedText;
   shouldUpgrade?: true;
+};
+
+export type ApiInputInvoiceStarGiftResale = {
+  type: 'stargiftResale';
+  slug: string;
+  peerId: string;
 };
 
 export type ApiInputInvoiceStarsGiveaway = {
@@ -386,9 +399,9 @@ export type ApiInputInvoiceStarGiftTransfer = {
 };
 
 export type ApiInputInvoice = ApiInputInvoiceMessage | ApiInputInvoiceSlug | ApiInputInvoiceGiveaway
-| ApiInputInvoiceGiftCode | ApiInputInvoiceStars | ApiInputInvoiceStarsGift
+| ApiInputInvoiceGiftCode | ApiInputInvoicePremiumGiftStars | ApiInputInvoiceStars | ApiInputInvoiceStarsGift
 | ApiInputInvoiceStarsGiveaway | ApiInputInvoiceStarGift | ApiInputInvoiceChatInviteSubscription
-| ApiInputInvoiceStarGiftUpgrade | ApiInputInvoiceStarGiftTransfer;
+| ApiInputInvoiceStarGiftUpgrade | ApiInputInvoiceStarGiftTransfer | ApiInputInvoiceStarGiftResale;
 
 /* Used for Invoice request */
 export type ApiRequestInputInvoiceMessage = {
@@ -413,6 +426,13 @@ export type ApiRequestInputInvoiceStars = {
   purpose: ApiInputStorePaymentPurpose;
 };
 
+export type ApiRequestInputInvoicePremiumGiftStars = {
+  type: 'premiumGiftStars';
+  user: ApiUser;
+  months: number;
+  message?: ApiFormattedText;
+};
+
 export type ApiRequestInputInvoiceStarsGiveaway = {
   type: 'starsgiveaway';
   purpose: ApiInputStorePaymentPurpose;
@@ -425,6 +445,12 @@ export type ApiRequestInputInvoiceStarGift = {
   giftId: string;
   message?: ApiFormattedText;
   shouldUpgrade?: true;
+};
+
+export type ApiRequestInputInvoiceStarGiftResale = {
+  type: 'stargiftResale';
+  slug: string;
+  peer: ApiPeer;
 };
 
 export type ApiRequestInputInvoiceChatInviteSubscription = {
@@ -447,4 +473,5 @@ export type ApiRequestInputInvoiceStarGiftTransfer = {
 export type ApiRequestInputInvoice = ApiRequestInputInvoiceMessage | ApiRequestInputInvoiceSlug
 | ApiRequestInputInvoiceGiveaway | ApiRequestInputInvoiceStars | ApiRequestInputInvoiceStarsGiveaway
 | ApiRequestInputInvoiceChatInviteSubscription | ApiRequestInputInvoiceStarGift | ApiRequestInputInvoiceStarGiftUpgrade
-| ApiRequestInputInvoiceStarGiftTransfer;
+| ApiRequestInputInvoiceStarGiftTransfer | ApiRequestInputInvoicePremiumGiftStars
+| ApiRequestInputInvoiceStarGiftResale;

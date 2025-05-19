@@ -1,6 +1,7 @@
 import { Api as GramJs } from '../../../lib/gramjs';
 
 import type {
+  ApiDisallowedGiftsSettings,
   ApiInputSavedStarGift,
   ApiSavedStarGift,
   ApiStarGift,
@@ -17,7 +18,7 @@ export function buildApiStarGift(starGift: GramJs.TypeStarGift): ApiStarGift {
   if (starGift instanceof GramJs.StarGiftUnique) {
     const {
       id, num, ownerId, ownerName, title, attributes, availabilityIssued, availabilityTotal, slug, ownerAddress,
-      giftAddress,
+      giftAddress, resellStars,
     } = starGift;
 
     return {
@@ -33,12 +34,13 @@ export function buildApiStarGift(starGift: GramJs.TypeStarGift): ApiStarGift {
       issuedCount: availabilityIssued,
       slug,
       giftAddress,
+      resellPriceInStars: resellStars?.toJSNumber(),
     };
   }
 
   const {
     id, limited, stars, availabilityRemains, availabilityTotal, convertStars, firstSaleDate, lastSaleDate, soldOut,
-    birthday, upgradeStars,
+    birthday, upgradeStars, resellMinStars, title,
   } = starGift;
 
   addDocumentToLocalDb(starGift.sticker);
@@ -59,6 +61,8 @@ export function buildApiStarGift(starGift: GramJs.TypeStarGift): ApiStarGift {
     isSoldOut: soldOut,
     isBirthday: birthday,
     upgradeStars: upgradeStars?.toJSNumber(),
+    title,
+    resellMinStars: resellMinStars?.toJSNumber(),
   };
 }
 
@@ -131,7 +135,7 @@ export function buildApiStarGiftAttribute(attribute: GramJs.TypeStarGiftAttribut
 export function buildApiSavedStarGift(userStarGift: GramJs.SavedStarGift, peerId: string): ApiSavedStarGift {
   const {
     gift, date, convertStars, fromId, message, msgId, nameHidden, unsaved, upgradeStars, transferStars, canUpgrade,
-    savedId, canExportAt, pinnedToTop,
+    savedId, canExportAt, pinnedToTop, canResellAt, canTransferAt,
   } = userStarGift;
 
   const inputGift: ApiInputSavedStarGift | undefined = savedId && peerId
@@ -153,6 +157,26 @@ export function buildApiSavedStarGift(userStarGift: GramJs.SavedStarGift, peerId
     inputGift,
     savedId: savedId?.toString(),
     canExportAt,
+    canResellAt,
+    canTransferAt,
     isPinned: pinnedToTop,
+  };
+}
+
+export function buildApiDisallowedGiftsSettings(
+  result: GramJs.TypeDisallowedGiftsSettings,
+): ApiDisallowedGiftsSettings {
+  const {
+    disallowUnlimitedStargifts,
+    disallowLimitedStargifts,
+    disallowUniqueStargifts,
+    disallowPremiumGifts,
+  } = result;
+
+  return {
+    shouldDisallowUnlimitedStarGifts: disallowUnlimitedStargifts,
+    shouldDisallowLimitedStarGifts: disallowLimitedStargifts,
+    shouldDisallowUniqueStarGifts: disallowUniqueStargifts,
+    shouldDisallowPremiumGifts: disallowPremiumGifts,
   };
 }

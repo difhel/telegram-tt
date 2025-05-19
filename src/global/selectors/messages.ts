@@ -24,12 +24,12 @@ import { ApiMessageEntityTypes, MAIN_THREAD_ID } from '../../api/types';
 import {
   ANONYMOUS_USER_ID, API_GENERAL_ID_LIMIT, GENERAL_TOPIC_ID, SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../config';
+import { IS_TRANSLATION_SUPPORTED } from '../../util/browser/windowEnvironment';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { findLast } from '../../util/iteratees';
 import { getMessageKey, isLocalMessageId } from '../../util/keys/messageKey';
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import { getServerTime } from '../../util/serverTime';
-import { IS_TRANSLATION_SUPPORTED } from '../../util/windowEnvironment';
 import {
   canSendReaction,
   getAllowedAttachmentOptions,
@@ -73,7 +73,7 @@ import {
   selectIsChatWithSelf,
   selectRequestedChatTranslationLanguage,
 } from './chats';
-import { selectPeer } from './peers';
+import { selectPeer, selectPeerPaidMessagesStars } from './peers';
 import { selectPeerStory } from './stories';
 import { selectIsStickerFavorite } from './symbols';
 import { selectTabState } from './tabs';
@@ -1331,12 +1331,21 @@ export function selectShouldSchedule<T extends GlobalState>(
   return selectCurrentMessageList(global, tabId)?.type === 'scheduled';
 }
 
+export function selectCanSchedule<T extends GlobalState>(
+  global: T,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  const chatId = selectCurrentMessageList(global, tabId)?.chatId;
+  const paidMessagesStars = chatId ? selectPeerPaidMessagesStars(global, chatId) : undefined;
+  return !paidMessagesStars;
+}
+
 export function selectCanScheduleUntilOnline<T extends GlobalState>(global: T, id: string) {
   const isChatWithSelf = selectIsChatWithSelf(global, id);
   const chatBot = selectBot(global, id);
-  return Boolean(
-    !isChatWithSelf && !chatBot && isUserId(id) && selectUserStatus(global, id)?.wasOnline,
-  );
+  const paidMessagesStars = selectPeerPaidMessagesStars(global, id);
+  return Boolean(!paidMessagesStars
+    && !isChatWithSelf && !chatBot && isUserId(id) && selectUserStatus(global, id)?.wasOnline);
 }
 
 export function selectCustomEmojis(message: ApiMessage) {

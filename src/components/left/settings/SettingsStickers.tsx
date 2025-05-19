@@ -10,7 +10,7 @@ import type {
   ApiSticker,
   ApiStickerSet,
 } from '../../../api/types';
-import type { ISettings } from '../../../types';
+import type { AccountSettings } from '../../../types';
 import { SettingsScreens } from '../../../types';
 
 import { selectCanPlayAnimatedEmojis } from '../../../global/selectors';
@@ -31,12 +31,11 @@ const DEFAULT_REACTION_SIZE = 1.5 * REM;
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
 type StateProps =
-  Pick<ISettings, (
+  Pick<AccountSettings, (
     'shouldSuggestStickers' | 'shouldUpdateStickerSetOrder'
   )> & {
     addedSetIds?: string[];
@@ -58,11 +57,11 @@ const SettingsStickers: FC<OwnProps & StateProps> = ({
   availableReactions,
   canPlayAnimatedEmojis,
   onReset,
-  onScreenSelect,
 }) => {
   const {
     setSettingOption,
     openStickerSet,
+    openSettingsScreen,
   } = getActions();
   const lang = useOldLang();
 
@@ -104,7 +103,7 @@ const SettingsStickers: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.CustomEmoji)}
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.CustomEmoji })}
           icon="smile"
         >
           {lang('StickersList.EmojiItem')}
@@ -115,7 +114,7 @@ const SettingsStickers: FC<OwnProps & StateProps> = ({
             className="SettingsDefaultReaction"
             narrow
             // eslint-disable-next-line react/jsx-no-bind
-            onClick={() => onScreenSelect(SettingsScreens.QuickReaction)}
+            onClick={() => openSettingsScreen({ screen: SettingsScreens.QuickReaction })}
           >
             <ReactionStaticEmoji
               reaction={defaultReaction}

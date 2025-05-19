@@ -35,6 +35,7 @@ import type {
   ApiReceiptRegular,
   ApiSavedGifts,
   ApiSavedStarGift,
+  ApiSponsoredPeer,
   ApiStarGift,
   ApiStarGiftAttribute,
   ApiStarGiveawayOption,
@@ -64,6 +65,7 @@ import type {
   GlobalSearchContent,
   IAnchorPosition,
   InlineBotSettings,
+  LeftColumnContent,
   ManagementProgress,
   ManagementState,
   MediaViewerMedia,
@@ -119,7 +121,6 @@ export type TabState = {
   shouldCloseRightColumn?: boolean;
   nextProfileTab?: ProfileTabType;
   forceScrollProfileTab?: boolean;
-  nextSettingsScreen?: SettingsScreens;
   nextFoldersAction?: ReducerAction<FoldersActions>;
   shareFolderScreen?: {
     folderId: number;
@@ -156,6 +157,7 @@ export type TabState = {
     noHighlight?: boolean;
     isResizingContainer?: boolean;
     quote?: string;
+    quoteOffset?: number;
     scrollTargetPosition?: ScrollTargetPosition;
   };
 
@@ -185,7 +187,10 @@ export type TabState = {
   };
 
   aboutAdsModal?: {
-    chatId: string;
+    randomId: string;
+    canReport?: boolean;
+    sponsorInfo?: string;
+    additionalInfo?: string;
   };
 
   reactionPicker?: {
@@ -212,6 +217,11 @@ export type TabState = {
     filter: GiftProfileFilterOptions;
   };
 
+  leftColumn: {
+    contentKey: LeftColumnContent;
+    settingsScreen: SettingsScreens;
+  };
+
   globalSearch: {
     query?: string;
     minDate?: number;
@@ -219,6 +229,7 @@ export type TabState = {
     currentContent?: GlobalSearchContent;
     chatId?: string;
     foundTopicIds?: number[];
+    sponsoredPeer?: ApiSponsoredPeer;
     fetchingStatus?: {
       chats?: boolean;
       messages?: boolean;
@@ -278,6 +289,8 @@ export type TabState = {
     byChatId: Record<string, ManagementState>;
   };
 
+  isPaymentMessageConfirmDialogOpen: boolean;
+
   storyViewer: {
     isRibbonShown?: boolean;
     isArchivedRibbonShown?: boolean;
@@ -292,6 +305,7 @@ export type TabState = {
     // Used for better switch animation between peers.
     lastViewedByPeerIds?: Record<string, number>;
     isPrivacyModalOpen?: boolean;
+    isPaymentConfirmDialogOpen?: boolean;
     isStealthModalOpen?: boolean;
     viewModal?: {
       storyId: number;
@@ -349,6 +363,7 @@ export type TabState = {
     fromChatId?: string;
     messageId?: number;
     quoteText?: ApiFormattedText;
+    quoteOffset?: number;
     toChatId?: string;
     toThreadId?: ThreadId;
   };
@@ -435,7 +450,7 @@ export type TabState = {
   openedCustomEmojiSetIds?: string[];
 
   reportAdModal?: {
-    chatId: string;
+    chatId?: string;
     randomId: string;
     sections: {
       title: string;
@@ -509,6 +524,11 @@ export type TabState = {
     webAppKey: string;
     message: ApiPreparedInlineMessage;
     filter: ApiChatType[];
+    pendingSendArgs?: {
+      peerId: string;
+      threadId?: ThreadId;
+      starsForSendMessage?: number;
+    };
   };
 
   webApps: {
@@ -608,6 +628,8 @@ export type TabState = {
 
   isGiftRecipientPickerOpen?: boolean;
 
+  isFrozenAccountModalOpen?: boolean;
+
   starsGiftingPickerModal?: {
     isOpen?: boolean;
   };
@@ -629,6 +651,10 @@ export type TabState = {
   giftModal?: {
     forPeerId: string;
     gifts?: ApiPremiumGiftCodeOption[];
+  };
+  chatRefundModal?: {
+    userId: string;
+    starsToRefund: number;
   };
 
   limitReachedModal?: {
@@ -738,6 +764,11 @@ export type TabState = {
     gift: ApiSavedStarGift | ApiStarGift;
   };
 
+  giftResalePriceComposerModal?: {
+    peerId?: string;
+    gift: ApiSavedStarGift | ApiStarGift;
+  };
+
   giftTransferModal?: {
     gift: ApiSavedStarGift;
   };
@@ -773,4 +804,5 @@ export type TabState = {
 
   isWaitingForStarGiftUpgrade?: true;
   isWaitingForStarGiftTransfer?: true;
+  insertingPeerIdMention?: string;
 };

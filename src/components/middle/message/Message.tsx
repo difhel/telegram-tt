@@ -33,9 +33,9 @@ import type {
   ChatTranslatedMessages,
   FocusDirection,
   IAlbum,
-  ISettings,
   MessageListType,
   ScrollTargetPosition,
+  ThemeKey,
   ThreadId,
 } from '../../../types';
 import type { Signal } from '../../../util/signals';
@@ -53,7 +53,6 @@ import {
   getMessageHtmlId,
   getMessageSingleCustomEmoji,
   getMessageSingleRegularEmoji,
-  getPeerFullTitle,
   hasMessageText,
   hasMessageTtl,
   isAnonymousForwardsChat,
@@ -69,6 +68,7 @@ import {
   isSystemBot,
   isUserId,
 } from '../../../global/helpers';
+import { getPeerFullTitle } from '../../../global/helpers/peers';
 import { getMessageReplyInfo, getStoryReplyInfo } from '../../../global/helpers/replies';
 import {
   selectActiveDownloads,
@@ -85,6 +85,7 @@ import {
   selectForwardedSender,
   selectIsChatProtected,
   selectIsChatWithSelf,
+  selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
   selectIsDocumentGroupSelected,
   selectIsInSelectMode,
@@ -113,11 +114,12 @@ import {
   selectUploadProgress,
   selectUser,
 } from '../../../global/selectors';
+import { selectSharedSettings } from '../../../global/selectors/sharedState';
+import { IS_ANDROID, IS_ELECTRON, IS_TRANSLATION_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { getMessageKey } from '../../../util/keys/messageKey';
 import stopEvent from '../../../util/stopEvent';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
-import { IS_ANDROID, IS_ELECTRON, IS_TRANSLATION_SUPPORTED } from '../../../util/windowEnvironment';
 import { calculateDimensionsForMessageMedia, getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
 import { getPeerColorClass } from '../../common/helpers/peerColor';
 import renderText from '../../common/helpers/renderText';
@@ -221,7 +223,7 @@ type OwnProps =
   & MessagePositionProperties;
 
 type StateProps = {
-  theme: ISettings['theme'];
+  theme: ThemeKey;
   forceSenderName?: boolean;
   sender?: ApiPeer;
   canShowSender: boolean;
@@ -244,6 +246,7 @@ type StateProps = {
   isFocused?: boolean;
   focusDirection?: FocusDirection;
   focusedQuote?: string;
+  focusedQuoteOffset?: number;
   noFocusHighlight?: boolean;
   scrollTargetPosition?: ScrollTargetPosition;
   isResizingContainer?: boolean;
@@ -301,6 +304,9 @@ type StateProps = {
   poll?: ApiPoll;
   maxTimestamp?: number;
   lastPlaybackTimestamp?: number;
+  paidMessageStars?: number;
+  isChatWithUser?: boolean;
+  isAccountFrozen?: boolean;
 };
 
 type MetaPosition =
@@ -365,6 +371,7 @@ const Message: FC<OwnProps & StateProps> = ({
   isFocused,
   focusDirection,
   focusedQuote,
+  focusedQuoteOffset,
   noFocusHighlight,
   scrollTargetPosition,
   isResizingContainer,
@@ -421,6 +428,9 @@ const Message: FC<OwnProps & StateProps> = ({
   maxTimestamp,
   lastPlaybackTimestamp,
   onIntersectPinnedMessage,
+  paidMessageStars,
+  isChatWithUser,
+  isAccountFrozen,
 }) => {
   const {
     toggleMessageSelection,
@@ -458,7 +468,7 @@ const Message: FC<OwnProps & StateProps> = ({
     handleContextMenuHide,
   } = useContextMenuHandlers(
     ref,
-    isTouchScreen && isInSelectMode,
+    (isTouchScreen && isInSelectMode) || isAccountFrozen,
     !IS_ELECTRON,
     IS_ANDROID,
     getIsMessageListReady,
@@ -563,6 +573,7 @@ const Message: FC<OwnProps & StateProps> = ({
   const hasSubheader = hasTopicChip || hasMessageReply || hasStoryReply || hasForwardedCustomShape;
 
   const selectMessage = useLastCallback((e?: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => {
+    if (isAccountFrozen) return;
     toggleMessageSelection({
       messageId,
       groupedId,
@@ -724,7 +735,7 @@ const Message: FC<OwnProps & StateProps> = ({
   const text = textMessage && getMessageContent(textMessage).text;
   const isInvertedMedia = Boolean(message.isInvertedMedia);
 
-  const { replyToMsgId, replyToPeerId, isQuote } = messageReplyInfo || {};
+  const { replyToMsgId, replyToPeerId } = messageReplyInfo || {};
   const { peerId: storyReplyPeerId, storyId: storyReplyId } = storyReplyInfo || {};
 
   useEffect(() => {
@@ -761,7 +772,7 @@ const Message: FC<OwnProps & StateProps> = ({
     && !isInDocumentGroupNotLast && messageListType === 'thread'
     && !noComments;
   const withQuickReactionButton = !isTouchScreen && !phoneCall && !isInSelectMode && defaultReaction
-    && !isInDocumentGroupNotLast && !isStoryMention && !hasTtl;
+    && !isInDocumentGroupNotLast && !isStoryMention && !hasTtl && !isAccountFrozen;
 
   const hasOutsideReactions = !withVoiceTranscription && hasReactions
     && (isCustomShape || ((photo || video || storyData || (location?.mediaType === 'geo')) && !hasText));
@@ -786,6 +797,10 @@ const Message: FC<OwnProps & StateProps> = ({
 
   const withAppendix = contentClassName.includes('has-appendix');
   const emojiSize = getCustomEmojiSize(message.emojiOnlyCount);
+
+  const paidMessageStarsInMeta = !isChatWithUser
+    ? (isAlbum && paidMessageStars ? album.messages.length * paidMessageStars : paidMessageStars)
+    : undefined;
 
   let metaPosition!: MetaPosition;
   if (phoneCall) {
@@ -821,7 +836,7 @@ const Message: FC<OwnProps & StateProps> = ({
     replyToMsgId,
     replyMessage,
     message.id,
-    shouldHideReply || isQuote || isReplyPrivate,
+    shouldHideReply || isReplyPrivate,
   );
 
   useEnsureStory(
@@ -962,6 +977,7 @@ const Message: FC<OwnProps & StateProps> = ({
         translatedText={requestedTranslationLanguage ? currentTranslatedText : undefined}
         isForAnimation={isForAnimation}
         focusedQuote={focusedQuote}
+        focusedQuoteOffset={focusedQuoteOffset}
         emojiSize={emojiSize}
         highlight={highlight}
         isProtected={isProtected}
@@ -1019,6 +1035,7 @@ const Message: FC<OwnProps & StateProps> = ({
         onEffectClick={handleEffectClick}
         onTranslationClick={handleTranslationClick}
         onOpenThread={handleOpenThread}
+        paidMessageStars={paidMessageStarsInMeta}
       />
     );
 
@@ -1035,6 +1052,7 @@ const Message: FC<OwnProps & StateProps> = ({
         noRecentReactors={isChannel}
         tags={tags}
         isCurrentUserPremium={isPremium}
+        isAccountFrozen={isAccountFrozen}
       />
     );
   }
@@ -1119,7 +1137,7 @@ const Message: FC<OwnProps & StateProps> = ({
         {hasAnimatedEmoji && animatedCustomEmoji && (
           <AnimatedCustomEmoji
             customEmojiId={animatedCustomEmoji}
-            withEffects={withAnimatedEffects && isUserId(chatId) && !effect}
+            withEffects={withAnimatedEffects && isChatWithUser && !effect}
             isOwn={isOwn}
             observeIntersection={observeIntersectionForLoading}
             forceLoadPreview={isLocal}
@@ -1131,7 +1149,7 @@ const Message: FC<OwnProps & StateProps> = ({
         {hasAnimatedEmoji && animatedEmoji && (
           <AnimatedEmoji
             emoji={animatedEmoji}
-            withEffects={withAnimatedEffects && isUserId(chatId) && !effect}
+            withEffects={withAnimatedEffects && isChatWithUser && !effect}
             isOwn={isOwn}
             observeIntersection={observeIntersectionForLoading}
             forceLoadPreview={isLocal}
@@ -1686,6 +1704,7 @@ const Message: FC<OwnProps & StateProps> = ({
             observeIntersection={observeIntersectionForPlaying}
             noRecentReactors={isChannel}
             tags={tags}
+            isAccountFrozen={isAccountFrozen}
           />
         )}
       </div>
@@ -1719,7 +1738,11 @@ export default memo(withGlobal<OwnProps>(
     } = ownProps;
     const {
       id, chatId, viaBotId, isOutgoing, forwardInfo, transcriptionId, isPinned, viaBusinessBotId, effectId,
+      paidMessageStars,
     } = message;
+
+    const { shouldWarnAboutSvg } = selectSharedSettings(global);
+    const isChatWithUser = isUserId(chatId);
 
     const chat = selectChat(global, chatId);
     const isChatWithSelf = selectIsChatWithSelf(global, chatId);
@@ -1727,7 +1750,7 @@ export default memo(withGlobal<OwnProps>(
     const isAnonymousForwards = isAnonymousForwardsChat(chatId);
     const isChannel = chat && isChatChannel(chat);
     const isGroup = chat && isChatGroup(chat);
-    const chatFullInfo = !isUserId(chatId) ? selectChatFullInfo(global, chatId) : undefined;
+    const chatFullInfo = !isChatWithUser ? selectChatFullInfo(global, chatId) : undefined;
     const webPageStoryData = message.content.webPage?.story;
     const webPageStory = webPageStoryData
       ? selectPeerStory(global, webPageStoryData.peerId, webPageStoryData.id)
@@ -1774,7 +1797,7 @@ export default memo(withGlobal<OwnProps>(
 
     const {
       direction: focusDirection, noHighlight: noFocusHighlight, isResizingContainer,
-      quote: focusedQuote, scrollTargetPosition,
+      quote: focusedQuote, quoteOffset: focusedQuoteOffset, scrollTargetPosition,
     } = (isFocused && focusedMessage) || {};
 
     const middleSearch = selectCurrentMiddleSearch(global);
@@ -1841,6 +1864,7 @@ export default memo(withGlobal<OwnProps>(
     const maxTimestamp = selectMessageTimestampableDuration(global, message);
 
     const lastPlaybackTimestamp = selectMessageLastPlaybackTimestamp(global, chatId, message.id);
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
     return {
       theme: selectTheme(global),
@@ -1913,7 +1937,7 @@ export default memo(withGlobal<OwnProps>(
       isLoadingComments: repliesThreadInfo?.isCommentsInfo
         && loadingThread?.loadingChatId === repliesThreadInfo?.originChannelId
         && loadingThread?.loadingMessageId === repliesThreadInfo?.originMessageId,
-      shouldWarnAboutSvg: global.settings.byKey.shouldWarnAboutSvg,
+      shouldWarnAboutSvg,
       ...(isOutgoing && { outgoingStatus: selectOutgoingStatus(global, message, messageListType === 'scheduled') }),
       ...(typeof uploadProgress === 'number' && { uploadProgress }),
       ...(isFocused && {
@@ -1921,6 +1945,7 @@ export default memo(withGlobal<OwnProps>(
         noFocusHighlight,
         isResizingContainer,
         focusedQuote,
+        focusedQuoteOffset,
         scrollTargetPosition,
       }),
       senderBoosts,
@@ -1931,6 +1956,9 @@ export default memo(withGlobal<OwnProps>(
       poll,
       maxTimestamp,
       lastPlaybackTimestamp,
+      paidMessageStars,
+      isChatWithUser,
+      isAccountFrozen,
     };
   },
 )(Message));

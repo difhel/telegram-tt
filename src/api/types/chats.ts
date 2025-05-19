@@ -68,9 +68,6 @@ export interface ApiChat {
     accessHash?: string;
   };
 
-  // Obtained from GetChatSettings
-  settings?: ApiChatSettings;
-
   joinRequests?: ApiChatInviteImporter[];
   isJoinToSend?: boolean;
   isJoinRequest?: boolean;
@@ -91,6 +88,8 @@ export interface ApiChat {
 
   // Locally determined field
   detectedLanguage?: string;
+
+  paidMessagesStars?: number;
 }
 
 export interface ApiTypingStatus {
@@ -143,6 +142,7 @@ export interface ApiChatFullInfo {
   hasScheduledMessages?: boolean;
   starGiftCount?: number;
   areStarGiftsAvailable?: boolean;
+  arePaidMessagesAvailable?: true;
 
   boostsApplied?: number;
   boostsToUnrestrict?: number;
@@ -230,11 +230,16 @@ export interface ApiChatFolder {
   hasMyInvites?: true;
 }
 
-export interface ApiChatSettings {
+export interface ApiPeerSettings {
   isAutoArchived?: boolean;
   canReportSpam?: boolean;
   canAddContact?: boolean;
   canBlockContact?: boolean;
+  chargedPaidMessageStars?: number;
+  registrationMonth?: string;
+  phoneCountry?: string;
+  nameChangeDate?: number;
+  photoChangeDate?: number;
 }
 
 export interface ApiSendAsPeerId {
@@ -308,4 +313,11 @@ export type ApiDraft = {
   date?: number;
   effectId?: string;
   isLocal?: boolean;
+};
+
+export type ApiSponsoredPeer = {
+  randomId: string;
+  peerId: string;
+  sponsorInfo?: string;
+  additionalInfo?: string;
 };

@@ -6,10 +6,10 @@ import { getActions } from '../../global';
 
 import type { ApiDimensions } from '../../api/types';
 
+import { IS_IOS, IS_TOUCH_ENV, IS_YA_BROWSER } from '../../util/browser/windowEnvironment';
 import { clamp } from '../../util/math';
 import safePlay from '../../util/safePlay';
 import stopEvent from '../../util/stopEvent';
-import { IS_IOS, IS_TOUCH_ENV, IS_YA_BROWSER } from '../../util/windowEnvironment';
 
 import useUnsupportedMedia from '../../hooks/media/useUnsupportedMedia';
 import useAppLayout from '../../hooks/useAppLayout';
@@ -120,7 +120,8 @@ const VideoPlayer: FC<OwnProps> = ({
   const handleVideoLeave = useLastCallback((e) => {
     const bounds = videoRef.current?.getBoundingClientRect();
     if (!bounds) return;
-    if (e.clientX < bounds.left || e.clientX > bounds.right || e.clientY < bounds.top || e.clientY > bounds.bottom) {
+    if (e.clientX <= bounds.left || e.clientX >= bounds.right
+      || e.clientY <= bounds.top || e.clientY >= bounds.bottom) {
       toggleControls(false);
     }
   });
@@ -295,7 +296,7 @@ const VideoPlayer: FC<OwnProps> = ({
     <div
       className="VideoPlayer"
       onMouseMove={shouldToggleControls ? handleVideoMove : undefined}
-      onMouseOut={shouldToggleControls ? handleVideoLeave : undefined}
+      onMouseLeave={shouldToggleControls ? handleVideoLeave : undefined}
     >
       <div
         style={wrapperStyle}

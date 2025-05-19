@@ -12,12 +12,12 @@ import {
   getChatAvatarHash,
   getChatTitle,
   getMessageRecentReaction,
-  getMessageSenderName,
   getPrivateChatUserId,
   getUserFullName,
   isChatChannel,
 } from '../global/helpers';
 import { getIsChatMuted, getIsChatSilent, getShouldShowMessagePreview } from '../global/helpers/notifications';
+import { getMessageSenderName } from '../global/helpers/peers';
 import {
   selectChat,
   selectCurrentMessageList,
@@ -29,13 +29,13 @@ import {
   selectUser,
 } from '../global/selectors';
 import { callApi } from '../api/gramjs';
+import { IS_ELECTRON, IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './browser/windowEnvironment';
 import jsxToHtml from './element/jsxToHtml';
 import { buildCollectionByKey } from './iteratees';
 import * as mediaLoader from './mediaLoader';
 import { oldTranslate } from './oldLangProvider';
 import { debounce } from './schedulers';
 import { getServerTime } from './serverTime';
-import { IS_ELECTRON, IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './windowEnvironment';
 
 import MessageSummary from '../components/common/MessageSummary';
 
@@ -278,9 +278,10 @@ function checkIfShouldNotify(chat: ApiChat, message: Partial<ApiMessage>) {
   const topic = selectTopicFromMessage(global, message as ApiMessage);
   const topicMutedUntil = topic?.notifySettings.mutedUntil;
   const isMuted = topicMutedUntil === undefined ? isChatMuted : topicMutedUntil > getServerTime();
+  const shouldIgnoreMute = message.isMentioned;
 
   const shouldNotifyAboutMessage = message.content?.action?.type !== 'phoneCall';
-  if (isMuted || !shouldNotifyAboutMessage
+  if ((isMuted && !shouldIgnoreMute) || !shouldNotifyAboutMessage
      || chat.isNotJoined || !chat.isListed || selectIsChatWithSelf(global, chat.id)) {
     return false;
   }
