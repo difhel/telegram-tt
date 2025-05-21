@@ -5,7 +5,7 @@ import type {
   GiftProfileFilterOptions,
 } from './types';
 
-export const APP_CODE_NAME = 'D';
+export const APP_CODE_NAME = 'A';
 export const APP_NAME = process.env.APP_NAME || `Telegram Web ${APP_CODE_NAME}`;
 export const RELEASE_DATETIME = process.env.RELEASE_DATETIME;
 
